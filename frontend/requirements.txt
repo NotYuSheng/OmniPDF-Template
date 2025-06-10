@@ -1,0 +1,4 @@
+streamlit
+pandas
+numpy
+st.title('Uber pickups in NYC')
