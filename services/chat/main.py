@@ -1,6 +1,13 @@
 from fastapi import FastAPI
 from openai import OpenAI
+<<<<<<< HEAD
 
+=======
+from fastapi import FastAPI, Depends, HTTPException, Header
+from pydantic import BaseModel
+from typing import List, Dict
+import uuid
+>>>>>>> 04e9342 (feat: basic chat service by running  /c/<query> or /c)
 
 app = FastAPI()
 
@@ -10,6 +17,17 @@ def health_check():
     return {"status": "ok"}
 
 
+<<<<<<< HEAD
+=======
+@app.get("/")
+def read_root():
+    return {"message": "Hello, FastAPI!"}
+
+
+app = FastAPI()
+
+
+>>>>>>> 04e9342 (feat: basic chat service by running  /c/<query> or /c)
 @app.get("/c")
 def chat():
     client = OpenAI(
