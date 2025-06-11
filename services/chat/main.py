@@ -1,9 +1,6 @@
 from fastapi import FastAPI
 from openai import OpenAI
-from fastapi import FastAPI, Depends, HTTPException, Header
-from pydantic import BaseModel
-from typing import List, Dict
-import uuid
+
 
 app = FastAPI()
 
@@ -11,14 +8,6 @@ app = FastAPI()
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
-
-
-@app.get("/")
-def read_root():
-    return {"message": "Hello, FastAPI!"}
-
-
-app = FastAPI()
 
 
 @app.get("/c")
