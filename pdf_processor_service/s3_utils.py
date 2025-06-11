@@ -1,37 +1,43 @@
 import os
-from minio import Minio
-from datetime import timedelta
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 from dotenv import load_dotenv
+from datetime import timedelta
 
-# Optional: Load from .env file if used
+# Optional: Load from .env file
 load_dotenv()
 
-# Load credentials and config from environment
-MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "minio:9000")
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
-MINIO_SECURE = os.getenv("MINIO_SECURE", "false").lower() == "true"
+# Load environment variables
+S3_ENDPOINT = os.getenv("S3_ENDPOINT", "http://minio:9000")  # MinIO for dev
+S3_BUCKET = os.getenv("S3_BUCKET", "omnifiles")
+S3_ACCESS_KEY = os.getenv("S3_ACCESS_KEY", "minioadmin")
+S3_SECRET_KEY = os.getenv("S3_SECRET_KEY", "minioadmin")
 
-# Initialize MinIO client
-client = Minio(
-    endpoint=MINIO_ENDPOINT,
-    access_key=MINIO_ACCESS_KEY,
-    secret_key=MINIO_SECRET_KEY,
-    secure=MINIO_SECURE,
+# Setup S3 client
+s3_client = boto3.client(
+    "s3",
+    endpoint_url=S3_ENDPOINT,
+    aws_access_key_id=S3_ACCESS_KEY,
+    aws_secret_access_key=S3_SECRET_KEY
 )
 
-def generate_presigned_url(bucket: str, object_name: str, expiry_seconds: int = 300) -> str:
-    return client.presigned_get_object(
-        bucket_name=bucket,
-        object_name=object_name,
-        expires=timedelta(seconds=expiry_seconds),
-    )
-
 def upload_file(bucket: str, object_name: str, file_data: bytes, content_type: str):
-    client.put_object(
-        bucket_name=bucket,
-        object_name=object_name,
-        data=file_data,
-        length=len(file_data),
-        content_type=content_type,
-    )
+    try:
+        s3_client.put_object(
+            Bucket=bucket,
+            Key=object_name,
+            Body=file_data,
+            ContentType=content_type,
+        )
+    except (BotoCoreError, ClientError) as e:
+        raise RuntimeError(f"S3 upload failed: {str(e)}")
+
+def generate_presigned_url(bucket: str, object_name: str, expiry_seconds: int = 300) -> str:
+    try:
+        return s3_client.generate_presigned_url(
+            ClientMethod='get_object',
+            Params={'Bucket': bucket, 'Key': object_name},
+            ExpiresIn=expiry_seconds
+        )
+    except (BotoCoreError, ClientError) as e:
+        raise RuntimeError(f"Presigned URL generation failed: {str(e)}")
