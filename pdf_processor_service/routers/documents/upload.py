@@ -10,8 +10,8 @@ router = APIRouter()
 # MinIO (S3-compatible) configuration from environment
 S3_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
 S3_BUCKET = os.getenv("MINIO_BUCKET", "omnifiles")
-S3_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
-S3_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+S3_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
+S3_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
 
 # Set up the S3 client
 s3_client = boto3.client(
