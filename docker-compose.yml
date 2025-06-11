@@ -20,6 +20,11 @@ services:
     command: server /data --console-address ":9001"
     volumes:
       - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   createbucket:
     image: minio/mc
@@ -28,7 +33,11 @@ services:
       - minio
     entrypoint: >
       /bin/sh -c "
-        sleep 5;
+        echo 'Waiting for MinIO to be ready...';
+        until mc alias set local http://minio:9000 minioadmin minioadmin; do
+          sleep 2;
+        done;
+        echo 'MinIO is healthy, continuing...';
         mc alias set local http://minio:9000 minioadmin minioadmin;
         mc mb -p local/omnifiles;
         mc policy set public local/omnifiles;
