@@ -6,8 +6,6 @@ from botocore.exceptions import BotoCoreError, ClientError
 import os
 import logging
 
-logger = logging.getLogger(__name__)
-
 router = APIRouter()
 
 # MinIO (S3-compatible) configuration from environment
@@ -24,10 +22,20 @@ s3_client = boto3.client(
     aws_secret_access_key=S3_SECRET_KEY
 )
 
+# Logging
+logger = logging.getLogger(__name__)
+
 @router.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
     if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported")
+        raise HTTPException(status_code=400, detail="File extension must be .pdf")
+
+    header = await file.read(4)
+    if header != b"%PDF":
+        raise HTTPException(status_code=400, detail="Uploaded file is not a valid PDF (header mismatch)")
+
+    # Rewind file for full upload
+    await file.seek(0)
 
     doc_id = str(uuid.uuid4())
     key = f"{doc_id}.pdf"
