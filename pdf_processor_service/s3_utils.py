@@ -1,11 +1,23 @@
+import os
 from minio import Minio
 from datetime import timedelta
+from dotenv import load_dotenv
 
+# Optional: Load from .env file if used
+load_dotenv()
+
+# Load credentials and config from environment
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "minio:9000")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+MINIO_SECURE = os.getenv("MINIO_SECURE", "false").lower() == "true"
+
+# Initialize MinIO client
 client = Minio(
-    endpoint="minio:9000",
-    access_key="minioadmin",
-    secret_key="minioadmin",
-    secure=False,
+    endpoint=MINIO_ENDPOINT,
+    access_key=MINIO_ACCESS_KEY,
+    secret_key=MINIO_SECRET_KEY,
+    secure=MINIO_SECURE,
 )
 
 def generate_presigned_url(bucket: str, object_name: str, expiry_seconds: int = 300) -> str:
