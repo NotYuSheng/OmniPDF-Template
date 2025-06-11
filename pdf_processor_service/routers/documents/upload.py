@@ -6,9 +6,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 import os
 import logging
 
-# Set up logger (can be configured further)
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 router = APIRouter()
 
