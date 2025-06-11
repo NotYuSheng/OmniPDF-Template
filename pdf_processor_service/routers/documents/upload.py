@@ -1,4 +1,5 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi.responses import JSONResponse
 import uuid
 import logging
 from s3_utils import upload_fileobj, generate_presigned_url
