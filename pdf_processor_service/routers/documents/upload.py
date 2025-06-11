@@ -4,6 +4,11 @@ import uuid
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 import os
+import logging
+
+# Set up logger (can be configured further)
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 router = APIRouter()
 
@@ -41,7 +46,11 @@ async def upload_pdf(file: UploadFile = File(...)):
         )
 
     except (BotoCoreError, ClientError) as e:
-        raise HTTPException(status_code=500, detail="An error occurred during the S3 operation. Please check server logs for details.")
+        logger.error(f"S3 operation failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred during the S3 operation. Please check server logs for details."
+        )
 
     return JSONResponse(content={
         "doc_id": doc_id,

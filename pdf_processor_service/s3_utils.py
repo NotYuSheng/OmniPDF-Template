@@ -2,7 +2,6 @@ import os
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from dotenv import load_dotenv
-from datetime import timedelta
 
 # Optional: Load from .env file
 load_dotenv()
