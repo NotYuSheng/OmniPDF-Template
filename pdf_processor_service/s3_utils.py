@@ -1,42 +1,53 @@
 import os
+import logging
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
-from dotenv import load_dotenv
+from typing import Optional
 
-# Optional: Load from .env file
-load_dotenv()
+logger = logging.getLogger(__name__)
 
-# Load environment variables
-S3_ENDPOINT = os.getenv("S3_ENDPOINT", "http://minio:9000")  # MinIO for dev
-S3_BUCKET = os.getenv("S3_BUCKET", "omnifiles")
-S3_ACCESS_KEY = os.getenv("S3_ACCESS_KEY")
-S3_SECRET_KEY = os.getenv("S3_SECRET_KEY")
+# Load from environment
+S3_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://minio:9000")  # MinIO-compatible
+S3_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
+S3_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
+S3_BUCKET = os.getenv("MINIO_BUCKET", "omnifiles")
+REGION_NAME = os.getenv("AWS_REGION", "ap-southeast-1")  # Optional; ignored by MinIO
 
-# Setup S3 client
+# Instantiate boto3 S3 client
 s3_client = boto3.client(
     "s3",
     endpoint_url=S3_ENDPOINT,
     aws_access_key_id=S3_ACCESS_KEY,
-    aws_secret_access_key=S3_SECRET_KEY
+    aws_secret_access_key=S3_SECRET_KEY,
+    region_name=REGION_NAME
 )
 
-def upload_file(bucket: str, object_name: str, file_data: bytes, content_type: str):
+def upload_fileobj(file_obj, key: str, content_type: str = "application/pdf") -> bool:
+    """
+    Uploads a file-like object to S3.
+    """
     try:
-        s3_client.put_object(
-            Bucket=bucket,
-            Key=object_name,
-            Body=file_data,
-            ContentType=content_type,
+        s3_client.upload_fileobj(
+            Fileobj=file_obj,
+            Bucket=S3_BUCKET,
+            Key=key,
+            ExtraArgs={"ContentType": content_type}
         )
+        return True
     except (BotoCoreError, ClientError) as e:
-        raise RuntimeError(f"S3 upload failed: {str(e)}")
+        logger.exception(f"Failed to upload file to S3: {e}")
+        return False
 
-def generate_presigned_url(bucket: str, object_name: str, expiry_seconds: int = 300) -> str:
+def generate_presigned_url(key: str, expiry_seconds: int = 300) -> Optional[str]:
+    """
+    Generates a presigned URL to download a file from S3.
+    """
     try:
         return s3_client.generate_presigned_url(
-            ClientMethod='get_object',
-            Params={'Bucket': bucket, 'Key': object_name},
+            "get_object",
+            Params={"Bucket": S3_BUCKET, "Key": key},
             ExpiresIn=expiry_seconds
         )
     except (BotoCoreError, ClientError) as e:
-        raise RuntimeError(f"Presigned URL generation failed: {str(e)}")
+        logger.exception(f"Failed to generate presigned URL: {e}")
+        return None

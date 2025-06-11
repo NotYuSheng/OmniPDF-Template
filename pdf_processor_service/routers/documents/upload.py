@@ -1,62 +1,40 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 import uuid
-import boto3
-from botocore.exceptions import BotoCoreError, ClientError
-import os
 import logging
+from s3_utils import upload_fileobj, generate_presigned_url
 
 router = APIRouter()
-
-# MinIO (S3-compatible) configuration from environment
-S3_ENDPOINT = os.getenv("MINIO_ENDPOINT", "minio:9000")
-S3_BUCKET = os.getenv("MINIO_BUCKET", "omnifiles")
-S3_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
-S3_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
-
-# Set up the S3 client
-s3_client = boto3.client(
-    "s3",
-    endpoint_url=S3_ENDPOINT,
-    aws_access_key_id=S3_ACCESS_KEY,
-    aws_secret_access_key=S3_SECRET_KEY
-)
-
-# Logging
 logger = logging.getLogger(__name__)
 
 @router.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
+    # Validate file extension
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="File extension must be .pdf")
 
+    # Check file header for actual PDF content
     header = await file.read(4)
     if header != b"%PDF":
         raise HTTPException(status_code=400, detail="Uploaded file is not a valid PDF (header mismatch)")
+    await file.seek(0)  # Rewind for upload
 
-    # Rewind file for full upload
-    await file.seek(0)
-
+    # Generate a UUID for this document
     doc_id = str(uuid.uuid4())
     key = f"{doc_id}.pdf"
 
     try:
-        # Upload file to MinIO
-        s3_client.upload_fileobj(file.file, S3_BUCKET, key)
+        success = upload_fileobj(file.file, key, content_type=file.content_type or "application/pdf")
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to upload file to S3")
 
-        # Generate a presigned download URL (valid for 5 minutes)
-        presigned_url = s3_client.generate_presigned_url(
-            "get_object",
-            Params={"Bucket": S3_BUCKET, "Key": key},
-            ExpiresIn=300  # 5 minutes
-        )
+        presigned_url = generate_presigned_url(key)
+        if not presigned_url:
+            raise HTTPException(status_code=500, detail="Failed to generate presigned URL")
 
-    except (BotoCoreError, ClientError) as e:
-        logger.error(f"S3 operation failed: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail="An error occurred during the S3 operation. Please check server logs for details."
-        )
+    except Exception as e:
+        logger.error(f"Unexpected error during upload: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
     return JSONResponse(content={
         "doc_id": doc_id,
