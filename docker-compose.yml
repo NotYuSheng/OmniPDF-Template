@@ -3,11 +3,6 @@ services:
     build:
       context: ./pdf_processor_service
     container_name: pdf_processor_service
-    environment:
-      - MINIO_ENDPOINT=http://minio:9000
-      - MINIO_BUCKET=omnifiles
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadmin
     ports:
       - "8000:8000"
     env_file:
