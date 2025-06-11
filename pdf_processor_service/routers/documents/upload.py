@@ -36,8 +36,8 @@ async def upload_pdf(file: UploadFile = File(...)):
         logger.error(f"Unexpected error during upload: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
 
-    return UploadResponse(content={
-        "doc_id": doc_id,
-        "filename": file.filename,
-        "download_url": presigned_url
-    })
+    return UploadResponse(
+        doc_id=doc_id,
+        filename=file.filename,
+        download_url=presigned_url
+    )
