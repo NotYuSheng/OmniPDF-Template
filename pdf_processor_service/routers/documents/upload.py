@@ -23,18 +23,28 @@ s3_client = boto3.client(
 
 @router.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
-    # Validate file extension
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
 
-    # Generate a UUID as document ID
     doc_id = str(uuid.uuid4())
     key = f"{doc_id}.pdf"
 
     try:
         # Upload file to MinIO
         s3_client.upload_fileobj(file.file, S3_BUCKET, key)
-    except (BotoCoreError, ClientError) as e:
-        raise HTTPException(status_code=500, detail="Failed to upload file")
 
-    return JSONResponse(content={"doc_id": doc_id, "filename": file.filename})
+        # Generate a presigned download URL (valid for 5 minutes)
+        presigned_url = s3_client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": S3_BUCKET, "Key": key},
+            ExpiresIn=300  # 5 minutes
+        )
+
+    except (BotoCoreError, ClientError) as e:
+        raise HTTPException(status_code=500, detail=f"Upload or URL generation failed: {str(e)}")
+
+    return JSONResponse(content={
+        "doc_id": doc_id,
+        "filename": file.filename,
+        "download_url": presigned_url
+    })
