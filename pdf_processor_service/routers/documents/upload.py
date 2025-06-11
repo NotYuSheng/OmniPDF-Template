@@ -41,7 +41,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         )
 
     except (BotoCoreError, ClientError) as e:
-        raise HTTPException(status_code=500, detail=f"Upload or URL generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="An error occurred during the S3 operation. Please check server logs for details.")
 
     return JSONResponse(content={
         "doc_id": doc_id,
