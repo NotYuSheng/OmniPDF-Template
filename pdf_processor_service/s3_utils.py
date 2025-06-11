@@ -9,8 +9,8 @@ load_dotenv()
 # Load environment variables
 S3_ENDPOINT = os.getenv("S3_ENDPOINT", "http://minio:9000")  # MinIO for dev
 S3_BUCKET = os.getenv("S3_BUCKET", "omnifiles")
-S3_ACCESS_KEY = os.getenv("S3_ACCESS_KEY", "minioadmin")
-S3_SECRET_KEY = os.getenv("S3_SECRET_KEY", "minioadmin")
+S3_ACCESS_KEY = os.getenv("S3_ACCESS_KEY")
+S3_SECRET_KEY = os.getenv("S3_SECRET_KEY")
 
 # Setup S3 client
 s3_client = boto3.client(
