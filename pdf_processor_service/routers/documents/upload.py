@@ -1,8 +1,8 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi.responses import JSONResponse
 import uuid
 import logging
 from s3_utils import upload_fileobj, generate_presigned_url
-from models.document import UploadResponse
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -36,8 +36,8 @@ async def upload_pdf(file: UploadFile = File(...)):
         logger.error(f"Unexpected error during upload: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
 
-    return UploadResponse(
-        doc_id=doc_id,
-        filename=file.filename,
-        download_url=presigned_url
-    )
+    return JSONResponse(content={
+        "doc_id": doc_id,
+        "filename": file.filename,
+        "download_url": presigned_url
+    })
