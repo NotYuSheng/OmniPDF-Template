@@ -12,9 +12,11 @@ from typing import Any, Generator
 
 from fastapi import Depends, Request, Response
 import pickle
-from typing import Any
+from typing import Any, Callable
 
 from redis import Redis
+
+# Stores the data as string using python pickle
 
 
 class SessionStorage:
@@ -31,6 +33,9 @@ class SessionStorage:
 
     def __delitem__(self, key: str):
         self.client.delete(key)
+
+    def __contains__(self, key: str):
+        return self.client.exists(key)
 
     def genSessionId(self) -> str:
         sessionId = config.genSessionId()
@@ -59,28 +64,12 @@ class Config(BaseSettings):
 config = Config()
 
 
-def basicConfig(
-    redisURL: Optional[str] = "",
-    sessionIdName: Optional[str] = "",
-    sessionIdGenerator: Optional[Callable[[], str]] = None,
-    expireTime: Optional[timedelta] = None,
-):
-    if redisURL:
-        config.redisURL = redisURL
-    if sessionIdName:
-        config.sessionIdName = sessionIdName
-    if sessionIdGenerator:
-        config.settings["sessionIdGenerator"] = sessionIdGenerator
-    if expireTime:
-        config.expireTime = expireTime
-
-
 def getSessionStorage() -> Generator:
     storage = SessionStorage()
     yield storage
 
 
-def getSession(request: Request, sessionStorage: SessionStorage = Depends(getSessionStorage)):
+def getDocList(request: Request, sessionStorage: SessionStorage = Depends(getSessionStorage)):
     sessionId = request.cookies.get(config.sessionIdName, "")
     return sessionStorage[sessionId]
 
@@ -90,15 +79,32 @@ def getSessionId(request: Request):
     return sessionId
 
 
-def setSession(sessionId: str, session: Any, sessionStorage: SessionStorage) -> str:
+def setDocList(sessionId: str, session: Any, sessionStorage: SessionStorage):
     sessionStorage[sessionId] = session
 
 
 def createSession(response: Response, session: Any, sessionStorage: SessionStorage) -> str:
     sessionId = sessionStorage.genSessionId()
     sessionStorage[sessionId] = session
+    response.set_cookie(config.sessionIdName, sessionId, httponly=True)
     return sessionId
 
 
-def deleteSession(sessionId: str, sessionStorage: SessionStorage):
+def deleteSession(response: Response, sessionId: str, sessionStorage: SessionStorage):
+    response.set_cookie(config.sessionIdName, sessionId, httponly=True, max_age=0)
     del sessionStorage[sessionId]
+
+
+def validateSessionId(sessionId: str = Depends(getSessionId), sessionStorage: SessionStorage = Depends(getSessionStorage)) -> bool:
+    return sessionId in sessionStorage
+
+
+def getDocAppend(sessionId: str = Depends(getSessionId), sessionStorage: SessionStorage = Depends(getSessionStorage)) -> Callable[[str], None]:
+    def appendDoc(fileName: str):
+        sessionData = sessionStorage[sessionId]
+        if isinstance(sessionData, list[str]):
+            sessionData.append(fileName)
+        else:
+            sessionData = [fileName]
+        sessionStorage[sessionId] = sessionData
+    return appendDoc

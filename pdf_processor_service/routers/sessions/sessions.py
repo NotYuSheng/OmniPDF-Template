@@ -1,18 +1,18 @@
 from fastapi import Depends, APIRouter, Request, Response
 
-from utils.redis import deleteSession, getSession, getSessionId, getSessionStorage, setSession, SessionStorage, basicConfig, createSession
+from utils.redis import deleteSession, getDocList, getSessionId, getSessionStorage, setDocList, SessionStorage, createSession
 
 router = APIRouter()
 
 
 @router.post("/Session")
 async def _setSession(
-    filelist: list[str], response: Response, sessionStorage: SessionStorage = Depends(getSessionStorage), sessionId: str = Depends(getSessionId), sessionData: list[str] = Depends(getSession)
+    filelist: list[str], response: Response, sessionStorage: SessionStorage = Depends(getSessionStorage), sessionId: str = Depends(getSessionId), sessionData: list[str] = Depends(getDocList)
 ):
     if filelist:
         sessionData = filelist
         if sessionId:
-            setSession(sessionId, sessionData, sessionStorage)
+            setDocList(sessionId, sessionData, sessionStorage)
         else:
             sessionId = createSession(response, sessionData, sessionStorage)
     return {
@@ -28,7 +28,7 @@ async def _getSessionId(sessionId: str = Depends(getSessionId)):
 
 @router.delete("/Session")
 async def _deleteSession(
-    sessionId: str = Depends(getSessionId), sessionStorage: SessionStorage = Depends(getSessionStorage)
+    response: Response, sessionId: str = Depends(getSessionId), sessionStorage: SessionStorage = Depends(getSessionStorage)
 ):
-    deleteSession(sessionId, sessionStorage)
+    deleteSession(response, sessionId, sessionStorage)
     return None
