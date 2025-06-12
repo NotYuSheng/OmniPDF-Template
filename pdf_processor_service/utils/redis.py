@@ -102,7 +102,7 @@ def validateSessionId(sessionId: str = Depends(getSessionId), sessionStorage: Se
 def getDocAppend(sessionId: str = Depends(getSessionId), sessionStorage: SessionStorage = Depends(getSessionStorage)) -> Callable[[str], None]:
     def appendDoc(fileName: str):
         sessionData = sessionStorage[sessionId]
-        if isinstance(sessionData, list[str]):
+        if isinstance(sessionData, list):
             sessionData.append(fileName)
         else:
             sessionData = [fileName]
