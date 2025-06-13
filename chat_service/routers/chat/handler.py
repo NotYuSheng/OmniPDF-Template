@@ -7,7 +7,7 @@ import os
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-@router.get("/c/{chat_item}")
+@router.get("/{chat_item}")
 async def handle_chat(chat_item: str, client: OpenAI = Depends(get_openai_client)):
     try: 
         response = client.chat.completions.create(
