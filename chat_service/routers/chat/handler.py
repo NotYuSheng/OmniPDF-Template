@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 @router.get("/{chat_item}")
 async def handle_chat(chat_item: str, client: OpenAI = Depends(get_openai_client)):
     try: 
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model=os.getenv("OPENAI_MODEL", "qwen2.5-0.5b-instruct"),
             messages=[{"role": "user", 
                        "content": chat_item}]
