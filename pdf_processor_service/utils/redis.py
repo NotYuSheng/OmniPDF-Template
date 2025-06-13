@@ -114,7 +114,7 @@ def getDocAppendFunction(
     sessionStorage: SessionStorage = Depends(getSessionStorage),
 ) -> Callable[[str], None]:
     if not validateSessionId(sessionId, sessionStorage):
-        sessionId = createNewSession(response)
+        sessionId = createNewSession(response, sessionStorage=sessionStorage)
 
     def appendDoc(fileName: str):
         sessionData = sessionStorage[sessionId]

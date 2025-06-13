@@ -29,7 +29,7 @@ async def _setSession(
         if validSession:
             setDocList(sessionId, sessionData, sessionStorage)
         else:
-            sessionId = createNewSession(response)
+            sessionId = createNewSession(response, sessionStorage=sessionStorage)
     return SessionDataResponse(session_id=sessionId, session_data=sessionData)
 
 
@@ -45,6 +45,7 @@ async def _getSessionId(
 async def _deleteSession(
     response: Response,
     sessionId: str = Depends(getSessionId),
+    sessionStorage: SessionStorage = Depends(getSessionStorage)
 ):
-    deleteSession(response, sessionId)
+    deleteSession(response, sessionId, sessionStorage)
     return "ok"
