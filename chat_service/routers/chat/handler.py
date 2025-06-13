@@ -15,7 +15,7 @@ async def handle_chat(chat_item: str, client: OpenAI = Depends(get_openai_client
             messages=[{"role": "user", 
                        "content": chat_item}]
         )
-    except OpenAI.APIError as e:
+    except APIError as e:
         logger.error(f"OpenAI API error: {e}")
         raise HTTPException(status_code=500, detail=f"AI service error: {e}")
     except Exception as e:
