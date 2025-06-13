@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from openai import OpenAI
+from openai import OpenAI, APIError
 from client import get_openai_client
 import logging
 import os
