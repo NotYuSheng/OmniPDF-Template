@@ -15,7 +15,7 @@ from models.session import SessionResponse, SessionDataResponse
 router = APIRouter()
 
 
-@router.post("/Session")
+@router.post("/session")
 async def _setSession(
     filelist: list[str],
     response: Response,
@@ -33,7 +33,7 @@ async def _setSession(
     return SessionDataResponse(session_id=sessionId, session_data=sessionData)
 
 
-@router.get("/Session")
+@router.get("/session")
 async def _getSessionId(
     sessionId: str = Depends(getSessionId),
     validSession: bool = Depends(validateSessionId)
@@ -41,7 +41,7 @@ async def _getSessionId(
     return SessionResponse(session_id=sessionId, valid_session=validSession)
 
 
-@router.delete("/Session")
+@router.delete("/session")
 async def _deleteSession(
     response: Response,
     sessionId: str = Depends(getSessionId),
