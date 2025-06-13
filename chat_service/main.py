@@ -1,13 +1,13 @@
 from fastapi import FastAPI
 from routers import health
 from routers.chat import handler
-#from routers.documents import upload, tables, images, text_chunks
+
+# from routers.documents import upload, tables, images, text_chunks
 import logging
 
 # Set up logger
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 
 app = FastAPI()
