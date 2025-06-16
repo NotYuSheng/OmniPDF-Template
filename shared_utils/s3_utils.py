@@ -51,7 +51,6 @@ def generate_presigned_url(key: str, expiry_seconds: int = 300) -> Optional[str]
     except (BotoCoreError, ClientError) as e:
         logger.exception(f"Failed to generate presigned URL: {e}")
         return None
-    
 def get_fileobj(key: str):
     """
     Retrieves a file object (StreamingBody) from S3 for the given key.
