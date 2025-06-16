@@ -17,35 +17,35 @@ router = APIRouter()
 
 @router.post("/session")
 async def _set_session(
-    filelist: list[str],
+    file_list: list[str],
     response: Response,
-    sessionStorage: SessionStorage = Depends(get_session_storage),
-    sessionId: str = Depends(get_session_id),
-    sessionData: list[str] = Depends(get_doc_list),
-    validSession: bool = Depends(validate_session_id)
+    session_storage: SessionStorage = Depends(get_session_storage),
+    session_id: str = Depends(get_session_id),
+    session_data: list[str] = Depends(get_doc_list),
+    valid_session: bool = Depends(validate_session_id)
 ):
-    if filelist:
-        sessionData = filelist
-        if validSession:
-            set_doc_list(sessionId, sessionData, sessionStorage)
+    if file_list:
+        session_data = file_list
+        if valid_session:
+            set_doc_list(session_id, session_data, session_storage)
         else:
-            sessionId = create_new_session(response, sessionStorage=sessionStorage)
-    return SessionDataResponse(session_id=sessionId, session_data=sessionData)
+            session_id = create_new_session(response, session_storage=session_storage)
+    return SessionDataResponse(session_id=session_id, session_data=session_data)
 
 
 @router.get("/session")
 async def _get_session_id(
-    sessionId: str = Depends(get_session_id),
-    validSession: bool = Depends(validate_session_id)
+    session_id: str = Depends(get_session_id),
+    valid_session: bool = Depends(validate_session_id)
 ):
-    return SessionResponse(session_id=sessionId, valid_session=validSession)
+    return SessionResponse(session_id=session_id, valid_session=valid_session)
 
 
 @router.delete("/session")
 async def _delete_session(
     response: Response,
-    sessionId: str = Depends(get_session_id),
-    sessionStorage: SessionStorage = Depends(get_session_storage)
+    session_id: str = Depends(get_session_id),
+    session_storage: SessionStorage = Depends(get_session_storage)
 ):
-    delete_session(response, sessionId, sessionStorage)
+    delete_session(response, session_id, session_storage)
     return "ok"
