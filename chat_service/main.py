@@ -2,7 +2,6 @@ from fastapi import FastAPI
 from routers import health
 from routers.chat import handler
 
-# from routers.documents import upload, tables, images, text_chunks
 import logging
 
 # Set up logger
