@@ -30,4 +30,22 @@ async def handle_chat(chat_item: str, client: OpenAI = Depends(get_openai_client
             detail="An internal server error occurred while processing your request.",
         )
 
-    return {"response": response.choices[0].message.content}
+    # Validate the response structure before accessing content
+    if not response.choices or len(response.choices) == 0:
+        logger.error("No choices found in OpenAI response: %s", response)
+        raise HTTPException(
+            status_code=500,
+            detail="AI service returned no choices or an unexpected response format.",
+        )
+
+    first_choice = response.choices[0]
+    if not first_choice.message or first_choice.message.content is None:
+        logger.error(
+            "No message or content in OpenAI response's first choice: %s", first_choice
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="AI service response choice is malformed or lacks content.",
+        )
+
+    return {"response": first_choice.message.content}
