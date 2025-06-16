@@ -1,0 +1,38 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+*.pyo
+
+# Virtual environment
+.venv/
+env/
+venv/
+
+# Env files
+.env
+.env.*
+
+# Logs and debug
+*.log
+
+# VSCode settings (optional)
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker artifacts
+*.tar
+docker-compose.override.yml
+
+# Python packaging
+*.egg-info/
+dist/
+build/
+
+# Uploaded files (if saved locally during dev)
+uploads/
+data/

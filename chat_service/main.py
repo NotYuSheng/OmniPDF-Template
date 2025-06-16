@@ -1,35 +1,15 @@
 from fastapi import FastAPI
-from openai import OpenAI
+from routers import health
+from routers.chat import handler
+
+import logging
+
+# Set up logger
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
 
 app = FastAPI()
 
-
-@app.get("/c")
-def chat():
-    client = OpenAI(
-        base_url="http://localhost:1234/v1",  # Make sure `/v1` is included
-        api_key="lm-studio"  # any dummy string
-    )
-
-    response = client.chat.completions.create(
-        model="qwen2.5-0.5b-instruct",
-        messages=[
-            {"role": "user", "content": "List 3 niche things/items in IT Technical Skills or facts that is useful to a software engineer."}]
-    )
-
-    return {"response": response.choices[0].message.content}
-
-
-@app.get("/c/{chat_item}")
-def chat(chat_item):
-    client = OpenAI(
-        base_url="http://localhost:1234/v1",  # Make sure `/v1` is included
-        api_key="lm-studio"  # any dummy string
-    )
-
-    response = client.chat.completions.create(
-        model="qwen2.5-0.5b-instruct",
-        messages=[{"role": "user", "content": chat_item}]
-    )
-
-    return {"response": response.choices[0].message.content}
+app.include_router(health.router)
+app.include_router(handler.router, prefix="/chat")
