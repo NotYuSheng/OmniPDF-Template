@@ -143,8 +143,7 @@ async def chunking(request: EmbeddingRequest) -> List[Dict[str, Any]]: # for Sem
     # METHOD 1: Semantic Chunking
     # Perform semantic chunking using LangChain's SemanticChunker
     # Reject by returning empty list if PDF document has no content
-    if not request.text.strip():
-        raise HTTPException(status_code=400, detail="No text content found in PDF")
+    
 
     try:
         # # Download PDF from S3
@@ -163,6 +162,8 @@ async def chunking(request: EmbeddingRequest) -> List[Dict[str, Any]]: # for Sem
         doc = Document(page_content=request.text.strip())
         # doc = Document(page_content=text)  # for internal testing
         # print("Text:", [doc])
+        if not request.text.strip():
+            raise HTTPException(status_code=400, detail="No text content found in PDF")
 
         # Use semantic chunker
         chunks = semantic_chunker.split_documents([doc])
