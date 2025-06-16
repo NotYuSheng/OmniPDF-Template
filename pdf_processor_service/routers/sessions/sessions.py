@@ -30,6 +30,7 @@ async def set_session(
             set_doc_list(session_id, session_data, session_storage)
         else:
             session_id = create_new_session(response, session_storage=session_storage)
+            set_doc_list(session_id, session_data, session_storage)
     return SessionDataResponse(session_id=session_id, session_data=session_data)
 
 
@@ -42,7 +43,7 @@ async def get_session_id(
 
 
 @router.delete("/session")
-async def delete_session(
+async def end_session(
     response: Response,
     session_id: str = Depends(get_session_id),
     session_storage: SessionStorage = Depends(get_session_storage)

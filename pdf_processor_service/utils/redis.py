@@ -116,12 +116,12 @@ def get_doc_list_append_function(
     if not validate_session_id(session_id, session_storage):
         session_id = create_new_session(response, session_storage=session_storage)
 
-    def append_doc(fileName: str):
+    def append_doc(filename: str):
         session_data = session_storage[session_id]
         if isinstance(session_data, list):
-            session_data.append(fileName)
+            session_data.append(filename)
         else:
-            session_data = [fileName]
+            session_data = [filename]
         session_storage[session_id] = session_data
 
     return append_doc
