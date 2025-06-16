@@ -16,7 +16,7 @@ router = APIRouter()
 
 
 @router.post("/session")
-async def _set_session(
+async def set_session(
     file_list: list[str],
     response: Response,
     session_storage: SessionStorage = Depends(get_session_storage),
@@ -34,7 +34,7 @@ async def _set_session(
 
 
 @router.get("/session")
-async def _get_session_id(
+async def get_session_id(
     session_id: str = Depends(get_session_id),
     valid_session: bool = Depends(validate_session_id)
 ):
@@ -42,7 +42,7 @@ async def _get_session_id(
 
 
 @router.delete("/session")
-async def _delete_session(
+async def delete_session(
     response: Response,
     session_id: str = Depends(get_session_id),
     session_storage: SessionStorage = Depends(get_session_storage)
