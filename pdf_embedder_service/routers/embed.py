@@ -66,7 +66,7 @@ class ProcessingResult(BaseModel):
     metadata: Dict[str, Any] = {}
 
 
-class TestRequest(BaseModel):
+class EmbeddingRequest(BaseModel):
     text: str
     config: ProcessingConfig
     pages_info: List[Dict]
@@ -83,7 +83,7 @@ class TestRequest(BaseModel):
 class SentenceTransformerEmbeddings(Embeddings):
     """Custom embeddings class for Sentence Transformers"""
 
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
+    def __init__(self, model_name: Embeddings):
         self.model = SentenceTransformer(model_name)
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
@@ -118,15 +118,15 @@ chroma_client = None
 #         return None
 
 
-def chunking(request: TestRequest) -> List[Dict[str, Any]]: # for Semantic
+async def chunking(request: EmbeddingRequest) -> List[Dict[str, Any]]: # for Semantic
 # def chunking() -> List[Dict[str, Any]]: # for Document-Based
     """Perform chunking / splitting of data via either Document-Based Chunking or Semantic Chunking"""
     global embedding_model, embeddings_instance, semantic_chunker, document_chunker, chroma_client
 
     if embedding_model is None:
         logger.info("Loading embedding model...")
-        embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-        embeddings_instance = SentenceTransformerEmbeddings('all-MiniLM-L6-v2')
+        embedding_model = SentenceTransformer(request.config.embedding_model)
+        embeddings_instance = SentenceTransformerEmbeddings(request.config.embedding_model)
 
     if semantic_chunker is None:
         logger.info("Initializing semantic chunker...")
@@ -141,7 +141,7 @@ def chunking(request: TestRequest) -> List[Dict[str, Any]]: # for Semantic
         chroma_client = chromadb.Client()
 
     # METHOD 1: Semantic Chunking
-    """Perform semantic chunking using LangChain's SemanticChunker"""
+    # Perform semantic chunking using LangChain's SemanticChunker
     # Reject by returning empty list if PDF document has no content
     if not request.text.strip():
         raise HTTPException(status_code=400, detail="No text content found in PDF")
