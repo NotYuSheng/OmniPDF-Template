@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.concurrency import run_in_threadpool
 from openai import OpenAI, APIError
-from client import get_openai_client
+from .client import get_openai_client
 import logging
 import os
 
@@ -24,7 +24,7 @@ async def handle_chat(chat_item: str, client: OpenAI = Depends(get_openai_client
             detail="An error occurred while communicating with the AI service.",
         )
     except Exception as e:
-        logger.error(f"An unexpected error occurred: {e}")
+        logger.exception("An unexpected error occurred:")
         raise HTTPException(
             status_code=500,
             detail="An internal server error occurred while processing your request.",
