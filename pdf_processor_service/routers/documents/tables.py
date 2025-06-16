@@ -1,26 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
-from fastapi.responses import StreamingResponse
 import logging
-from s3_utils import get_file
 from utils.redis import validate_session_doc_pair
-from tempfile import TemporaryFile
 from os import getenv
 from httpx import AsyncClient
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-
-
-async def get_pdf_tables_from_s3(
-    doc_id: str, valid_request: bool = Depends(validate_session_doc_pair)
-):
-    if not valid_request:
-        raise HTTPException(status_code=403, detail="User not authorized to access this document or invalid document ID")
-
-    with TemporaryFile() as f:
-        get_file(f"{doc_id}_tables.csv", f)
-        f.seek(0)
-        return StreamingResponse(content=f, media_type="text/csv")
 
 
 @router.get("/{doc_id}/tables")
@@ -30,7 +15,10 @@ async def get_pdf_tables(
     valid_request: bool = Depends(validate_session_doc_pair),
 ):
     if not valid_request:
-        raise HTTPException(status_code=403, detail="User not authorized to access this document or invalid document ID")
+        raise HTTPException(
+            status_code=403,
+            detail="User not authorized to access this document or invalid document ID",
+        )
     async with AsyncClient() as client:
         req = await client.get(getenv("TABLE_PROCESSOR_URL") + f"/{doc_id}")
 
