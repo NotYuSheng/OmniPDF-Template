@@ -6,6 +6,9 @@ from httpx import AsyncClient
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+TEXT_CHUNK_PROCESSOR_URL = getenv("TEXT_CHUNK_PROCESSOR_URL")
+if not TEXT_CHUNK_PROCESSOR_URL:
+    raise ValueError("TEXT_CHUNK_PROCESSOR_URL is not set")
 
 
 @router.get("/{doc_id}/text-chunks")
@@ -15,9 +18,12 @@ async def get_pdf_text_chunks(
     valid_request: bool = Depends(validate_session_doc_pair),
 ):
     if not valid_request:
-        raise HTTPException(status_code=403, detail="User not authorized to access this document or invalid document ID")
+        raise HTTPException(
+            status_code=403,
+            detail="User not authorized to access this document or invalid document ID",
+        )
     async with AsyncClient() as client:
-        req = await client.get(getenv("TEXT_CHUNK_PROCESSOR_URL") + f"/{doc_id}")
+        req = await client.get(f"{TEXT_CHUNK_PROCESSOR_URL}/{doc_id}")
 
         response.status_code = req.status_code
         return req.content

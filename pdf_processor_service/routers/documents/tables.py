@@ -6,6 +6,9 @@ from httpx import AsyncClient
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+TABLE_PROCESSOR_URL = getenv("TABLE_PROCESSOR_URL")
+if not TABLE_PROCESSOR_URL:
+    raise ValueError("TABLE_PROCESSOR_URL is not set")
 
 
 @router.get("/{doc_id}/tables")
@@ -20,7 +23,7 @@ async def get_pdf_tables(
             detail="User not authorized to access this document or invalid document ID",
         )
     async with AsyncClient() as client:
-        req = await client.get(getenv("TABLE_PROCESSOR_URL") + f"/{doc_id}")
+        req = await client.get(f"{TABLE_PROCESSOR_URL}/{doc_id}")
 
         response.status_code = req.status_code
         return req.content
