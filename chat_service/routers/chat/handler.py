@@ -23,7 +23,7 @@ async def handle_chat(chat_item: str, client: OpenAI = Depends(get_openai_client
             status_code=500,
             detail="An error occurred while communicating with the AI service.",
         )
-    except Exception as e:
+    except Exception:
         logger.exception("An unexpected error occurred:")
         raise HTTPException(
             status_code=500,
