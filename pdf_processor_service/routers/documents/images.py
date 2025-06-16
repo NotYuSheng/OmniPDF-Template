@@ -15,7 +15,7 @@ async def get_pdf_images(
     valid_request: bool = Depends(validate_session_doc_pair),
 ):
     if not valid_request:
-        raise HTTPException(status_code=403, detail="Failed to upload file to S3")
+        raise HTTPException(status_code=403, detail="User not authorized to access this document or invalid document ID")
     async with AsyncClient() as client:
         req = await client.get(getenv("IMAGE_PROCESSOR_URL") + f"/{doc_id}")
 

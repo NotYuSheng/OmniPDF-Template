@@ -52,13 +52,13 @@ def generate_presigned_url(key: str, expiry_seconds: int = 300) -> Optional[str]
         logger.exception(f"Failed to generate presigned URL: {e}")
         return None
 
-def get_file(key:str, file: BinaryIO) -> int:
+def get_file(key:str, file: BinaryIO) -> Optional[BinaryIO]:
     """
-    Returns the size of the file
+    Returns the file
     """
     try:
         s3_client.download_fileobj(Bucket=S3_BUCKET, Key=key, Fileobj=file)
         return file
     except (BotoCoreError, ClientError) as e:
-        logger.exception(f"Failed to generate presigned URL: {e}")
+        logger.exception(f"Failed to download file '{key}' from S3: {e}")
         return None
