@@ -1,51 +1,52 @@
 from fastapi import Depends, APIRouter, Response
 
 from utils.redis import (
-    deleteSession,
-    getDocList,
-    getSessionId,
-    getSessionStorage,
-    setDocList,
+    delete_session,
+    get_doc_list,
+    get_session_id,
+    get_session_storage,
+    set_doc_list,
     SessionStorage,
-    createNewSession,
-    validateSessionId,
+    create_new_session,
+    validate_session_id,
 )
 from models.session import SessionResponse, SessionDataResponse
 
 router = APIRouter()
 
 
-@router.post("/Session")
-async def _setSession(
-    filelist: list[str],
+@router.post("/session")
+async def set_session(
+    file_list: list[str],
     response: Response,
-    sessionStorage: SessionStorage = Depends(getSessionStorage),
-    sessionId: str = Depends(getSessionId),
-    sessionData: list[str] = Depends(getDocList),
-    validSession: bool = Depends(validateSessionId)
+    session_storage: SessionStorage = Depends(get_session_storage),
+    session_id: str = Depends(get_session_id),
+    session_data: list[str] = Depends(get_doc_list),
+    valid_session: bool = Depends(validate_session_id)
 ):
-    if filelist:
-        sessionData = filelist
-        if validSession:
-            setDocList(sessionId, sessionData, sessionStorage)
+    if file_list:
+        session_data = file_list
+        if valid_session:
+            set_doc_list(session_id, session_data, session_storage)
         else:
-            sessionId = createNewSession(response, sessionStorage=sessionStorage)
-    return SessionDataResponse(session_id=sessionId, session_data=sessionData)
+            session_id = create_new_session(response, session_storage=session_storage)
+            set_doc_list(session_id, session_data, session_storage)
+    return SessionDataResponse(session_id=session_id, session_data=session_data)
 
 
-@router.get("/Session")
-async def _getSessionId(
-    sessionId: str = Depends(getSessionId),
-    validSession: bool = Depends(validateSessionId)
+@router.get("/session")
+async def get_session_id(
+    session_id: str = Depends(get_session_id),
+    valid_session: bool = Depends(validate_session_id)
 ):
-    return SessionResponse(session_id=sessionId, valid_session=validSession)
+    return SessionResponse(session_id=session_id, valid_session=valid_session)
 
 
-@router.delete("/Session")
-async def _deleteSession(
+@router.delete("/session")
+async def end_session(
     response: Response,
-    sessionId: str = Depends(getSessionId),
-    sessionStorage: SessionStorage = Depends(getSessionStorage)
+    session_id: str = Depends(get_session_id),
+    session_storage: SessionStorage = Depends(get_session_storage)
 ):
-    deleteSession(response, sessionId, sessionStorage)
+    delete_session(response, session_id, session_storage)
     return "ok"
