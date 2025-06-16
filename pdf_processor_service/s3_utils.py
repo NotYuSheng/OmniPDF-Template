@@ -2,7 +2,7 @@ import os
 import logging
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
-from typing import Optional, BinaryIO
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -50,15 +50,4 @@ def generate_presigned_url(key: str, expiry_seconds: int = 300) -> Optional[str]
         )
     except (BotoCoreError, ClientError) as e:
         logger.exception(f"Failed to generate presigned URL: {e}")
-        return None
-
-def get_file(key:str, file: BinaryIO) -> Optional[BinaryIO]:
-    """
-    Returns the file
-    """
-    try:
-        s3_client.download_fileobj(Bucket=S3_BUCKET, Key=key, Fileobj=file)
-        return file
-    except (BotoCoreError, ClientError) as e:
-        logger.exception(f"Failed to download file '{key}' from S3: {e}")
         return None
