@@ -32,7 +32,7 @@ async def get_pdf_tables(
     if not valid_request:
         raise HTTPException(status_code=403, detail="User not authorized to access this document or invalid document ID")
     async with AsyncClient() as client:
-        req = await client.get(getenv("IMAGE_PROCESSOR_URL") + f"/{doc_id}")
+        req = await client.get(getenv("TABLE_PROCESSOR_URL") + f"/{doc_id}")
 
         response.status_code = req.status_code
         return req.content
