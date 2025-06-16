@@ -10,10 +10,14 @@ import boto3
 import logging
 from datetime import datetime
 import uuid
+# from unstructured.partition.pdf import partition_pdf
+# from unstructured.staging.base import elements_to_json
+
 
 # Langchain components
 from langchain_core.embeddings import Embeddings
 from langchain_experimental.text_splitter import SemanticChunker
+from langchain.text_splitter import MarkdownTextSplitter
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.documents import Document
 from langchain_chroma import Chroma
@@ -43,12 +47,14 @@ class ProcessingConfig(BaseModel):
 
 class ChunkData(BaseModel):
     chunk_id: str
+    source_file: Optional[str] = None
     content: str
     start_char: int
     end_char: int
     page_number: Optional[int] = None
     embedding: List[float]
     metadata: Dict[str, Any] = {}
+
 
 
 class ProcessingResult(BaseModel):
@@ -60,16 +66,16 @@ class ProcessingResult(BaseModel):
     metadata: Dict[str, Any] = {}
 
 
-class Request(BaseModel):
-    doc_id: str
-    config: ProcessingConfig
-    pages_info: Optional[List[Dict]]
-
-
 class TestRequest(BaseModel):
     text: str
     config: ProcessingConfig
-    pages_info: Optional[List[Dict]]
+    pages_info: List[Dict]
+
+
+# class Request(BaseModel):
+#     text: str
+#     config: ProcessingConfig
+#     pages_info: List[Dict]
 
 
 # Method 1: Using Sentence Transformer for embedding of chunked data
@@ -93,30 +99,14 @@ class SentenceTransformerEmbeddings(Embeddings):
 
 # Global instances
 embedding_model = None
-semantic_chunker = None
-chroma_client = None
 embeddings_instance = None
-
-
-async def initialize_models():
-    """Initialize models and components"""
-    global embedding_model, semantic_chunker, chroma_client, embeddings_instance
-
-    if embedding_model is None:
-        logger.info("Loading embedding model...")
-        embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-        embeddings_instance = SentenceTransformerEmbeddings('all-MiniLM-L6-v2')
-
-    if semantic_chunker is None:
-        logger.info("Initializing semantic chunker...")
-        semantic_chunker = SemanticChunker(embeddings_instance)
-
-    if chroma_client is None:
-        logger.info("Initializing ChromaDB client...")
-        chroma_client = chromadb.Client()
+semantic_chunker = None
+document_chunker = None
+chroma_client = None
 
 
 @router.post("/embed")
+# Provision for retrieving PDF from local S3
 # def download_file_from_s3(key: str) -> Optional[bytes]:
 #     """Download file from S3 and return content as bytes"""
 #     try:
@@ -126,8 +116,36 @@ async def initialize_models():
 #     except Exception as e:
 #         logger.error(f"Failed to download file from S3: {e}")
 #         return None
-def chunking(request: TestRequest) -> List[Dict[str, Any]]:
+
+
+def chunking(request: TestRequest) -> List[Dict[str, Any]]: # for Semantic
+# def chunking() -> List[Dict[str, Any]]: # for Document-Based
+    """Perform chunking / splitting of data via either Document-Based Chunking or Semantic Chunking"""
+    global embedding_model, embeddings_instance, semantic_chunker, document_chunker, chroma_client
+
+    if embedding_model is None:
+        logger.info("Loading embedding model...")
+        embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+        embeddings_instance = SentenceTransformerEmbeddings('all-MiniLM-L6-v2')
+
+    if semantic_chunker is None:
+        logger.info("Initializing semantic chunker...")
+        semantic_chunker = SemanticChunker(embeddings_instance, breakpoint_threshold_type="percentile", breakpoint_threshold_amount=70)
+
+    if document_chunker is None:
+        logger.info("Initializing document-based chunker...")
+        document_chunker = MarkdownTextSplitter(chunk_size = 40, chunk_overlap=0)
+    
+    if chroma_client is None:
+        logger.info("Initializing ChromaDB client...")
+        chroma_client = chromadb.Client()
+
+    # METHOD 1: Semantic Chunking
     """Perform semantic chunking using LangChain's SemanticChunker"""
+    # Reject by returning empty list if PDF document has no content
+    if not request.text.strip():
+        raise HTTPException(status_code=400, detail="No text content found in PDF")
+
     try:
         # # Download PDF from S3
         # key = f"{request.doc_id}.pdf"
@@ -141,57 +159,91 @@ def chunking(request: TestRequest) -> List[Dict[str, Any]]:
         # if not text.strip():
         #     raise HTTPException(
         #         status_code=400, detail="No text content found in PDF")
-
         # Create a Document object
-        doc = Document(page_content=request.text)
+        doc = Document(page_content=request.text.strip())
+        # doc = Document(page_content=text)  # for internal testing
+        # print("Text:", [doc])
 
         # Use semantic chunker
         chunks = semantic_chunker.split_documents([doc])
+        # print("Chunks:", chunks)
+        print("Number of chunks:", len(chunks))
 
         chunk_data = []
         current_pos = 0
 
         for i, chunk in enumerate(chunks):
+            # First iteration: Extract first chunk of doc.page_content
             chunk_content = chunk.page_content
+            print(f"Length of chunk {i+1}:", len(chunk_content.strip()))
+            # First iteration: Start from first chunk of doc.page_context
             chunk_start = request.text.find(chunk_content, current_pos)
 
             if chunk_start == -1:
-                # Fallback: estimate position
                 chunk_start = current_pos
 
             chunk_end = chunk_start + len(chunk_content)
 
-            # Find which page this chunk belongs to
-            page_number = None
-            for page_info in request.pages_info:
-                if (chunk_start >= page_info['char_start'] and
-                        chunk_start < page_info['char_end']):
-                    page_number = page_info['page_number']
-                    break
+            # # Find which page this chunk belongs to
+            # page_number = None
+            # for page_info in request.pages_info:
+            #     if (chunk_start >= page_info['char_start'] and
+            #             chunk_start < page_info['char_end']):
+            #         page_number = page_info['page_number']
+            #         break
 
-            # Skip chunks that are too small
-            if len(chunk_content.strip()) < request.config.min_chunk_size:
-                current_pos = chunk_end
-                continue
+            # Skip chunks that are too small or too large (if necessary)
+            # if (len(chunk_content.strip()) < request.config.min_chunk_size) or (len(chunk_content.strip()) > request.config.max_chunk_size):
+            #     current_pos = chunk_end
+            #     print("Hi")
+            #     continue
 
+            # else:
             chunk_data.append({
-                'chunk_id': str(uuid.uuid4()),
-                'content': chunk_content.strip(),
-                'start_char': chunk_start,
-                'end_char': chunk_end,
-                'page_number': page_number,
-                'chunk_index': len(chunk_data),
-                'metadata': chunk.metadata
+            'chunk_id': str(uuid.uuid4()),
+            'content': chunk_content.strip(),
+            'start_char': chunk_start,
+            'end_char': chunk_end,
+            'page_number': None,
+            'chunk_index': len(chunk_data),
+            'metadata': chunk.metadata
             })
 
             current_pos = chunk_end
 
+        print("Chunk data:", chunk_data)
         return chunk_data
 
     except Exception as e:
         logger.error(f"Semantic chunking failed: {e}")
         # Fallback to simple chunking
         # return simple_chunk_text(text, config, pages_info)
+    
+       
+
+# Method 1 (from OmniPDF sample)
+# Split the filtered text into chunks for better translation
+# "standard_deviation", "interquartile"
+# text_splitter = SemanticChunker(
+#     Embeddings(), breakpoint_threshold_type="percentile")
+# text_chunks = text_splitter.split_text(filtered_text)
+
+# translated_text = ""
+# for chunk_idx, text_chunk in enumerate(text_chunks):
+#     translated_text_chunk = translate_text(text_chunk, CLIENT)
+#     translated_text += translated_text_chunk
+
+#     # Add text documents
+#     documents.append(
+#         {
+#             "page_content": translated_text_chunk,
+#             "metadata": {
+#                 "text_chunk_key": f"text_chunk_{page_number + 1}_{chunk_idx + 1}",
+#                 "type": "text",
+#             },
+#         }
+#     )
+    
 
 # Fallback to simple chunking
 # def simple_chunk_text(text: str, config: ProcessingConfig, pages_info: List[Dict]) -> List[Dict[str, Any]]:
@@ -246,29 +298,6 @@ def chunking(request: TestRequest) -> List[Dict[str, Any]]:
 
 # Fallback code for data chunking and embedding
 # DATA CHUNKING
-# Method 1 (from OmniPDF sample)
-# Split the filtered text into chunks for better translation
-# "standard_deviation", "interquartile"
-# text_splitter = SemanticChunker(
-#     Embeddings(), breakpoint_threshold_type="percentile")
-# text_chunks = text_splitter.split_text(filtered_text)
-
-# translated_text = ""
-# for chunk_idx, text_chunk in enumerate(text_chunks):
-#     translated_text_chunk = translate_text(text_chunk, CLIENT)
-#     translated_text += translated_text_chunk
-
-#     # Add text documents
-#     documents.append(
-#         {
-#             "page_content": translated_text_chunk,
-#             "metadata": {
-#                 "text_chunk_key": f"text_chunk_{page_number + 1}_{chunk_idx + 1}",
-#                 "type": "text",
-#             },
-#         }
-#     )
-
 # Method 2 (online source)
 # Percentile - all differences between sentences are calculated, and then any difference greater than the X percentile is split
 # text_splitter = SemanticChunker(Embeddings())
