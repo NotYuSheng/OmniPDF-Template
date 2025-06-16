@@ -51,3 +51,28 @@ def generate_presigned_url(key: str, expiry_seconds: int = 300) -> Optional[str]
     except (BotoCoreError, ClientError) as e:
         logger.exception(f"Failed to generate presigned URL: {e}")
         return None
+    
+def get_fileobj(key: str):
+    """
+    Retrieves a file object (StreamingBody) from S3 for the given key.
+    Raises exceptions on failure.
+    """
+    try:
+        response = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
+        return response["Body"] 
+    except (BotoCoreError, ClientError) as e:
+        logger.exception(f"Failed to get file from S3: {e}")
+        raise
+
+def delete_file(key: str) -> bool:
+    """
+    Deletes a file from S3 using the given key.
+    Returns True if successful, False otherwise.
+    """
+    try:
+        s3_client.delete_object(Bucket=S3_BUCKET, Key=key)
+        logger.info(f"Deleted file with key: {key}")
+        return True
+    except (BotoCoreError, ClientError) as e:
+        logger.exception(f"Failed to delete file from S3: {e}")
+        return False
