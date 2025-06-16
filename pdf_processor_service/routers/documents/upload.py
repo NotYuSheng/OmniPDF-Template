@@ -4,7 +4,7 @@ import uuid
 import logging
 from s3_utils import upload_fileobj, generate_presigned_url
 from models.document import DocumentUploadResponse
-from utils.redis import getDocAppendFunction
+from utils.redis import get_doc_list_append_function
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 @router.post("/upload")
 async def upload_pdf(
     file: UploadFile = File(...),
-    appendNewDoc: Callable[[str], None] = Depends(getDocAppendFunction),
+    appendNewDoc: Callable[[str], None] = Depends(get_doc_list_append_function),
 ):
     # Validate file extension
     if not file.filename.lower().endswith(".pdf"):

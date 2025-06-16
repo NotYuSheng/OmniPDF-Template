@@ -62,29 +62,29 @@ class Config(BaseSettings):
 config = Config()
 
 
-def getSessionStorage() -> Generator:
+def get_session_storage() -> Generator:
     storage = SessionStorage()
     yield storage
 
 
-def getDocList(
-    request: Request, sessionStorage: SessionStorage = Depends(getSessionStorage)
+def get_doc_list(
+    request: Request, sessionStorage: SessionStorage = Depends(get_session_storage)
 ):
     sessionId = request.cookies.get(config.sessionIdName, "")
     return sessionStorage[sessionId]
 
 
-def getSessionId(request: Request):
+def get_session_id(request: Request):
     sessionId = request.cookies.get(config.sessionIdName, "")
     return sessionId
 
 
-def setDocList(sessionId: str, session: Any, sessionStorage: SessionStorage):
+def set_doc_list(sessionId: str, session: Any, sessionStorage: SessionStorage):
     sessionStorage[sessionId] = session
 
 
-def createNewSession(
-    response: Response, sessionStorage: SessionStorage = Depends(getSessionStorage)
+def create_new_session(
+    response: Response, sessionStorage: SessionStorage = Depends(get_session_storage)
 ) -> str:
     sessionId = sessionStorage.genSessionId()
     sessionStorage[sessionId] = []
@@ -92,29 +92,29 @@ def createNewSession(
     return sessionId
 
 
-def deleteSession(
+def delete_session(
     response: Response,
-    sessionId: str = Depends(getSessionId),
-    sessionStorage: SessionStorage = Depends(getSessionStorage),
+    sessionId: str = Depends(get_session_id),
+    sessionStorage: SessionStorage = Depends(get_session_storage),
 ):
     response.set_cookie(config.sessionIdName, sessionId, httponly=True, max_age=0)
     del sessionStorage[sessionId]
 
 
-def validateSessionId(
-    sessionId: str = Depends(getSessionId),
-    sessionStorage: SessionStorage = Depends(getSessionStorage),
+def validate_session_id(
+    sessionId: str = Depends(get_session_id),
+    sessionStorage: SessionStorage = Depends(get_session_storage),
 ) -> bool:
     return sessionId in sessionStorage
 
 
-def getDocAppendFunction(
+def get_doc_list_append_function(
     response: Response,
-    sessionId: str = Depends(getSessionId),
-    sessionStorage: SessionStorage = Depends(getSessionStorage),
+    sessionId: str = Depends(get_session_id),
+    sessionStorage: SessionStorage = Depends(get_session_storage),
 ) -> Callable[[str], None]:
-    if not validateSessionId(sessionId, sessionStorage):
-        sessionId = createNewSession(response, sessionStorage=sessionStorage)
+    if not validate_session_id(sessionId, sessionStorage):
+        sessionId = create_new_session(response, sessionStorage=sessionStorage)
 
     def appendDoc(fileName: str):
         sessionData = sessionStorage[sessionId]
