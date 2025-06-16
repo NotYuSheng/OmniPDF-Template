@@ -17,7 +17,7 @@ async def get_pdf_images(
     if not valid_request:
         raise HTTPException(status_code=403, detail="Failed to upload file to S3")
     async with AsyncClient() as client:
-        req = await client.get(getenv("IMAGE_PROCESSER_URL") + f"/{doc_id}")
+        req = await client.get(getenv("IMAGE_PROCESSOR_URL") + f"/{doc_id}")
 
         response.status_code = req.status_code
         return req.content
