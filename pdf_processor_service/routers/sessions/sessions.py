@@ -35,7 +35,7 @@ async def set_session(
 
 
 @router.get("/session")
-async def return_session_id(
+async def get_session_status(
     session_id: str = Depends(get_session_id),
     valid_session: bool = Depends(validate_session_id)
 ):
@@ -49,4 +49,4 @@ async def end_session(
     session_storage: SessionStorage = Depends(get_session_storage)
 ):
     delete_session(response, session_id, session_storage)
-    return "ok"
+    return {"message": "Session ended successfully"}
