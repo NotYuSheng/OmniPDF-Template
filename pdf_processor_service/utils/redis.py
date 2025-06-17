@@ -20,6 +20,8 @@ class SessionStorage:
 
     def __getitem__(self, key: str):
         raw = self.client.get(key)
+        if not raw:
+            return None
         try:
             return json.loads(raw)
         except json.JSONDecodeError:
