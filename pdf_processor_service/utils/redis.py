@@ -71,7 +71,8 @@ def get_doc_list(
     request: Request, session_storage: SessionStorage = Depends(get_session_storage)
 ):
     session_id = request.cookies.get(config.session_id_name, "")
-    return session_storage.get(session_id, [])
+    session_data = session_storage[session_id]
+    return session_data if session_data is not None else []
 
 
 def get_session_id(request: Request):
