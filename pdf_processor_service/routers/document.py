@@ -37,7 +37,7 @@ async def upload_document(file: UploadFile = File(...)):
 
     return DocumentUploadResponse(
         doc_id=doc_id,
-        filename=file.filename,
+        filename=key,
         download_url=presigned_url
     )
 
