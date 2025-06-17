@@ -35,7 +35,7 @@ async def set_session(
 
 
 @router.get("/session")
-async def get_session_id(
+async def return_session_id(
     session_id: str = Depends(get_session_id),
     valid_session: bool = Depends(validate_session_id)
 ):
