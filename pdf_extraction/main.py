@@ -1,7 +1,5 @@
 from fastapi import FastAPI
-from routers import health
-from pdf_extraction.routers.pdf_extraction import extractor
-#from routers.documents import upload, tables, images, text_chunks
+from routers import health, extractor
 import logging
 
 # Set up logger
