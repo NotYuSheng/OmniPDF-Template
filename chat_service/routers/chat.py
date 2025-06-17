@@ -9,6 +9,9 @@ from models.chat import ChatRequest
 router = APIRouter(prefix="/chat")
 logger = logging.getLogger(__name__)
 
+_OPENAI_MODEL_DEFAULT = "qwen2.5-0.5b-instruct"
+OPENAI_MODEL_NAME = os.getenv("OPENAI_MODEL", _OPENAI_MODEL_DEFAULT)
+
 
 @router.post("/", status_code=201)
 async def handle_chat(
@@ -18,7 +21,7 @@ async def handle_chat(
     try:
         response = await run_in_threadpool(
             client.chat.completions.create,
-            model=os.getenv("OPENAI_MODEL", "qwen2.5-0.5b-instruct"),
+            model=OPENAI_MODEL_NAME,
             messages=[
                 {
                     "role": "user",
