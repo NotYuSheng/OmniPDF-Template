@@ -13,5 +13,5 @@ logging.basicConfig(
 app = FastAPI()
 
 app.include_router(health.router)
-app.include_router(document.router, prefix="/documents")
+app.include_router(document.router)
 app.include_router(sessions.router)
