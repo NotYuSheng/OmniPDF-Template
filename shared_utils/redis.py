@@ -5,15 +5,18 @@ from os import getenv
 from datetime import timedelta
 from typing import Any, Callable, Generator
 from uuid import uuid4
+import logging
+import json
 
 from pydantic_settings import BaseSettings
-from fastapi import Depends, Request, Response
-import json
+from fastapi import Depends, Request, Response, HTTPException
 from redis import Redis
 
+
+logger = logging.getLogger(__name__)
+
+
 # Stores the data as string using json
-
-
 class SessionStorage:
     def __init__(self):
         self.client = Redis.from_url(config.redis_url)
@@ -21,11 +24,16 @@ class SessionStorage:
     def __getitem__(self, key: str):
         raw = self.client.get(key)
         if not raw:
+            logger.info(f"Trying to load empty key {key}.")
             return None
         try:
             return json.loads(raw)
-        except json.JSONDecodeError:
-            return None
+        except json.JSONDecodeError as e:
+            logger.error(f"Error parsing JSON data for {key}: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="Unable to load session data from memory. Please start a new session.",
+            )
 
     def __setitem__(self, key: str, value: Any):
         self.client.set(
@@ -104,7 +112,9 @@ def delete_session(
     session_storage: SessionStorage = Depends(get_session_storage),
 ):
     if session_id:
-        response.set_cookie(config.session_id_name, session_id, httponly=True, max_age=0)
+        response.set_cookie(
+            config.session_id_name, session_id, httponly=True, max_age=0
+        )
         del session_storage[session_id]
 
 
