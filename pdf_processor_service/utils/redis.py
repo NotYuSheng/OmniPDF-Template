@@ -103,8 +103,9 @@ def delete_session(
     session_id: str = Depends(get_session_id),
     session_storage: SessionStorage = Depends(get_session_storage),
 ):
-    response.set_cookie(config.session_id_name, session_id, httponly=True, max_age=0)
-    del session_storage[session_id]
+    if session_id:
+        response.set_cookie(config.session_id_name, session_id, httponly=True, max_age=0)
+        del session_storage[session_id]
 
 
 def validate_session_id(
