@@ -26,7 +26,7 @@ async def handle_chat(
                 {
                     "role": "user",
                     "content": chat_request.message,
-                    "id": chat_request.doc_id if hasattr(chat_request, "id") else None,
+                    "id": chat_request.id,
                 }
             ],
         )
