@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from pydantic_settings import BaseSettings
 from fastapi import Depends, Request, Response
-import pickle
+import json
 from redis import Redis
 
 # Stores the data as string using python pickle
@@ -20,12 +20,12 @@ class SessionStorage:
 
     def __getitem__(self, key: str):
         raw = self.client.get(key)
-        return raw and pickle.loads(raw)
+        return raw and json.loads(raw)
 
     def __setitem__(self, key: str, value: Any):
         self.client.set(
             key,
-            pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL),
+            json.dumps(value),
             ex=config.expireTime,
         )
 
