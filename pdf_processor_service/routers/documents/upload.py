@@ -1,7 +1,7 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException
 import uuid
 import logging
-from s3_utils import upload_fileobj, generate_presigned_url
+from shared_utils.s3_utils import upload_fileobj, generate_presigned_url
 from models.document import DocumentUploadResponse
 
 router = APIRouter()
