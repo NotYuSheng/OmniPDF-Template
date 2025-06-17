@@ -18,7 +18,7 @@ async def handle_chat(
     try:
         response = await run_in_threadpool(
             client.chat.completions.create,
-            model=OPENAI_MODEL,
+            model=os.getenv("OPENAI_MODEL", "qwen2.5-0.5b-instruct"),
             messages=[{"role": "user", "content": chat_request.message}],
         )
     except APIError as e:
