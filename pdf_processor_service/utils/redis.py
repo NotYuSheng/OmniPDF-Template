@@ -20,7 +20,10 @@ class SessionStorage:
 
     def __getitem__(self, key: str):
         raw = self.client.get(key)
-        return raw and json.loads(raw)
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            return None
 
     def __setitem__(self, key: str, value: Any):
         self.client.set(
