@@ -1,6 +1,5 @@
 # For data chunking and embedding
 
-import chromadb
 from fastapi import APIRouter, HTTPException, File, UploadFile, Form
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional, Union
@@ -10,9 +9,9 @@ import boto3
 import logging
 from datetime import datetime
 import uuid
+import numpy as np
 # from unstructured.partition.pdf import partition_pdf
 # from unstructured.staging.base import elements_to_json
-
 
 # Langchain components
 from langchain_core.embeddings import Embeddings
@@ -26,6 +25,10 @@ from langchain_community.chat_models import ChatOllama
 # Sentence transformers
 from sentence_transformers import SentenceTransformer
 
+# ChromaDB
+import chromadb
+from chromadb.utils import embedding_functions
+
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
@@ -35,14 +38,18 @@ class ProcessingConfig(BaseModel):
         default=512, description="Target chunk size in characters")
     overlap: int = Field(
         default=50, description="Overlap between chunks in characters")
+    # Default embedding model provided by Sentence Transformers
     embedding_model: str = Field(
         default="all-MiniLM-L6-v2", description="Sentence Transformer model")
+    # Better embedding model to be tested
+    # embedding_model: str = Field(
+    #     default="all-mpnet-base-v2", description="Sentence Transformer model")
     min_chunk_size: int = Field(default=100, description="Minimum chunk size")
     max_chunk_size: int = Field(default=1000, description="Maximum chunk size")
     store_in_chroma: bool = Field(
         default=True, description="Store embeddings in ChromaDB")
     collection_name: str = Field(
-        default="documents", description="ChromaDB collection name")
+        default="my_documents", description="ChromaDB collection name")
 
 
 class ChunkData(BaseModel):
@@ -66,16 +73,10 @@ class ProcessingResult(BaseModel):
     metadata: Dict[str, Any] = {}
 
 
-class EmbeddingRequest(BaseModel):
+class DataRequest(BaseModel):
     text: str
     config: ProcessingConfig
     pages_info: List[Dict]
-
-
-# class Request(BaseModel):
-#     text: str
-#     config: ProcessingConfig
-#     pages_info: List[Dict]
 
 
 # Method 1: Using Sentence Transformer for embedding of chunked data
@@ -83,7 +84,7 @@ class EmbeddingRequest(BaseModel):
 class SentenceTransformerEmbeddings(Embeddings):
     """Custom embeddings class for Sentence Transformers"""
 
-    def __init__(self, model_name: Embeddings):
+    def __init__(self, model_name: str):
         self.model = SentenceTransformer(model_name)
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
@@ -104,10 +105,17 @@ semantic_chunker = None
 document_chunker = None
 chroma_client = None
 
+# Global instances
+# embedding_model = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
+# embedding_model = SentenceTransformer(DataRequest.config.embedding_model)
+# embeddings_instance = SentenceTransformerEmbeddings(DataRequest.config.embedding_model)
+# semantic_chunker = SemanticChunker(embeddings_instance, breakpoint_threshold_type="percentile", breakpoint_threshold_amount=90)
+# document_chunker = MarkdownTextSplitter(chunk_size = 40, chunk_overlap=0)
+# chroma_client = chromadb.Client() # data stored in memory, not on disk
 
-@router.post("/embed")
+
 # Provision for retrieving PDF from local S3
-# def download_file_from_s3(key: str) -> Optional[bytes]:
+# async def download_file_from_s3(key: str) -> Optional[bytes]:
 #     """Download file from S3 and return content as bytes"""
 #     try:
 #         s3_client = boto3.client('s3')  # Configure with your credentials
@@ -118,33 +126,50 @@ chroma_client = None
 #         return None
 
 
-async def chunking(request: EmbeddingRequest) -> List[Dict[str, Any]]: # for Semantic
+def serialize_chroma_results(results: Dict[str, Any]) -> Dict[str, Any]:
+    """Convert ChromaDB query results to JSON-serializable format"""
+    serialized = {}
+    
+    for key, value in results.items():
+        if key == 'embeddings' and value is not None:
+            # Convert numpy arrays to lists for embeddings
+            if isinstance(value, list) and len(value) > 0:
+                if isinstance(value[0], np.ndarray):
+                    serialized[key] = [emb.tolist() for emb in value]
+                elif isinstance(value[0], list):
+                    # Already in list format
+                    serialized[key] = value
+                else:
+                    serialized[key] = value
+            else:
+                serialized[key] = value
+        elif key == 'distances' and value is not None:
+            # Handle distances (might be numpy arrays)
+            if isinstance(value, list) and len(value) > 0:
+                if isinstance(value[0], np.ndarray):
+                    serialized[key] = [dist.tolist() for dist in value]
+                else:
+                    serialized[key] = value
+            else:
+                serialized[key] = value
+        else:
+            # Handle other fields normally
+            serialized[key] = value
+    
+    return serialized
+
+
+async def chunking(request:DataRequest) -> List[Dict[str, Any]]: # for Semantic
 # def chunking() -> List[Dict[str, Any]]: # for Document-Based
     """Perform chunking / splitting of data via either Document-Based Chunking or Semantic Chunking"""
-    global embedding_model, embeddings_instance, semantic_chunker, document_chunker, chroma_client
+    global embedding_model, semantic_chunker, document_chunker
 
-    if embedding_model is None:
-        logger.info("Loading embedding model...")
-        embedding_model = SentenceTransformer(request.config.embedding_model)
-        embeddings_instance = SentenceTransformerEmbeddings(request.config.embedding_model)
+    print("Starting chunking process...")
 
-    if semantic_chunker is None:
-        logger.info("Initializing semantic chunker...")
-        semantic_chunker = SemanticChunker(embeddings_instance, breakpoint_threshold_type="percentile", breakpoint_threshold_amount=70)
-
-    if document_chunker is None:
-        logger.info("Initializing document-based chunker...")
-        document_chunker = MarkdownTextSplitter(chunk_size = 40, chunk_overlap=0)
     
-    if chroma_client is None:
-        logger.info("Initializing ChromaDB client...")
-        chroma_client = chromadb.Client()
-
     # METHOD 1: Semantic Chunking
     # Perform semantic chunking using LangChain's SemanticChunker
     # Reject by returning empty list if PDF document has no content
-    
-
     try:
         # # Download PDF from S3
         # key = f"{request.doc_id}.pdf"
@@ -155,15 +180,12 @@ async def chunking(request: EmbeddingRequest) -> List[Dict[str, Any]]: # for Sem
         # # Extract text and page info from PDF
         # text, pages_info = extract_text_from_pdf(pdf_content)
 
-        # if not text.strip():
-        #     raise HTTPException(
-        #         status_code=400, detail="No text content found in PDF")
-        # Create a Document object
-        doc = Document(page_content=request.text.strip())
-        # doc = Document(page_content=text)  # for internal testing
-        # print("Text:", [doc])
         if not request.text.strip():
             raise HTTPException(status_code=400, detail="No text content found in PDF")
+
+        # Create a Document object
+        doc = Document(page_content=request.text.strip())
+        # print("Text:", [doc])
 
         # Use semantic chunker
         chunks = semantic_chunker.split_documents([doc])
@@ -214,13 +236,197 @@ async def chunking(request: EmbeddingRequest) -> List[Dict[str, Any]]: # for Sem
 
         print("Chunk data:", chunk_data)
         return chunk_data
-
     except Exception as e:
         logger.error(f"Semantic chunking failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
         # Fallback to simple chunking
         # return simple_chunk_text(text, config, pages_info)
+
+
+async def embedding(chunk_data: List[Dict[str, Any]], config: ProcessingConfig):
+    global embedding_model, embeddings_instance, chroma_client
+
+    print("Starting embedding process...")
+    await asyncio.sleep(1)
+
+    try:
+        try:
+            print("Getting collection...")
+            collection = chroma_client.get_or_create_collection(name=config.collection_name) # using default embedding function
+            logger.info(f"Using embedding model: {collection._embedding_function}")
+            logger.info(f"Using existing collection: {config.collection_name}")
+        except Exception as e:
+            logger.error(f"Collection retrieval failed: {e}")
+            raise HTTPException(status_code=500, detail=f"Collection retrieval failed: {str(e)}")
+        
+        for chunk in chunk_data:
+            collection.add(
+                ids=[chunk['chunk_id']],
+                documents=[chunk["content"]],
+            )
+            logger.info(f"Added chunk {chunk['chunk_id']} to collection")
+
+        results = collection.query(
+            query_texts=["They keep moving."],
+            n_results=min(2, len(chunk_data)),
+            include=["distances", "documents",  "metadatas"]
+        )
+
+        serialized_results = serialize_chroma_results(results)
+
+        return {
+            "collection_name": config.collection_name,
+            "total_chunks_added": len(chunk_data),
+            "sample_query_results": serialized_results
+        }
+
+    except Exception as e:
+        logger.error(f"Embedding process failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Embedding failed: {str(e)}")
+
+
+@router.post("/embed")
+async def pdf_embedder_service(request: DataRequest):
+    global embedding_model, embeddings_instance, chroma_client, semantic_chunker, document_chunker
+
+    if embedding_model is None:
+        logger.info("Loading embedding model...")
+        embedding_model = SentenceTransformer(request.config.embedding_model)
+        embeddings_instance = SentenceTransformerEmbeddings(request.config.embedding_model)
+
+    if semantic_chunker is None:
+        logger.info("Initializing semantic chunker...")
+        semantic_chunker = SemanticChunker(embeddings_instance, breakpoint_threshold_type="percentile", breakpoint_threshold_amount=90)
+
+    # if document_chunker is None:
+    #     logger.info("Initializing document-based chunker...")
+    #     document_chunker = MarkdownTextSplitter(chunk_size = 40, chunk_overlap=0)
+
+    if chroma_client is None:
+        logger.info("Initializing ChromaDB client...")
+        chroma_client = chromadb.Client() # data stored in memory, not on disk
+
+    try:
+        chunk_data = await chunking(request=request)
+
+        if not chunk_data:
+            raise HTTPException(status_code=400, detail="No chunks were created from the input text") 
+        
+        embed_results = await embedding(chunk_data, request.config)
+        
+        return {
+                "status": "success",
+                "chunks_created": len(chunk_data),
+                "embedding_results": embed_results,
+                "chunk_details": [
+                    {
+                        "chunk_id": chunk["chunk_id"],
+                        "content": chunk["content"],
+                        "content_length": len(chunk["content"]),
+                        "start_char": chunk["start_char"],
+                        "end_char": chunk["end_char"]
+                    }
+                    for chunk in chunk_data
+                ]
+            }
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        logger.error(f"PDF embedder service failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Service failed: {str(e)}")
+
+
+    # METHOD 2: Level 3 Document-Based Chunking
+    # """Perform document-based chunking"""
+    # Source: https://github.com/FullStackRetrieval-com/RetrievalTutorials/blob/main/tutorials/LevelsOfTextSplitting/5_Levels_Of_Text_Splitting.ipynb
+    # filepath = "test"
+
+    # raw_pdf_elements = partition_pdf(
+    #     filename=filepath,
+    #     extract_images_in_pdf=True,
+    #     infer_table_structure=True,
+    #     chunking_strategy="by_title",
+    #     max_characters=4000,
+    #     new_after_n_chars=3800,
+    #     combine_text_under_n_chars=2000,
+    #     image_output_dir_path="static/pdfImages/",
+    # )
+
+    # markdown_text = """
+    # # Fun in California
+
+    # ## Driving
+
+    # Try driving on the 1 down to San Diego
+
+    # ### Food
+
+    # Make sure to eat a burrito while you're there
+
+    # ## Hiking
+
+    # Go to Yosemite
+    # """
+    # print([markdown_text])
+
+    # try:
+    #     chunks = document_chunker.create_documents([markdown_text])
+    #     print("Chunks:", chunks)
+    #     print("Number of chunks:", len(chunks))
+
+    #     # # Reject by returning empty list if PDF document has no content
+    #     if not markdown_text.strip():
+    #         raise HTTPException(status_code=400, detail="No text content found in PDF")
     
-       
+    #     chunk_data = []
+    #     current_pos = 0
+
+    #     for i, chunk in enumerate(chunks):
+    #         # First iteration: Extract first chunk of doc.page_content
+    #         chunk_content = chunk.page_content
+    #         print(f"Length of chunk {i+1}:", len(chunk_content.strip()))
+    #         # First iteration: Start from first chunk of doc.page_context
+    #         chunk_start = markdown_text.find(chunk_content, current_pos)
+
+    #         if chunk_start == -1:
+    #             chunk_start = current_pos
+
+    #         chunk_end = chunk_start + len(chunk_content)
+
+    #         # # Find which page this chunk belongs to
+    #         # page_number = None
+    #         # for page_info in request.pages_info:
+    #         #     if (chunk_start >= page_info['char_start'] and
+    #         #             chunk_start < page_info['char_end']):
+    #         #         page_number = page_info['page_number']
+    #         #         break
+
+    #         # Skip chunks that are too small or too large (if necessary)
+    #         # if (len(chunk_content.strip()) < request.config.min_chunk_size) or (len(chunk_content.strip()) > request.config.max_chunk_size):
+    #         #     current_pos = chunk_end
+    #         #     print("Hi")
+    #         #     continue
+
+    #         # else:
+    #         chunk_data.append({
+    #         'chunk_id': str(uuid.uuid4()),
+    #         'content': chunk_content.strip(),
+    #         'start_char': chunk_start,
+    #         'end_char': chunk_end,
+    #         'page_number': None,
+    #         'chunk_index': len(chunk_data),
+    #         'metadata': chunk.metadata
+    #         })
+
+    #         current_pos = chunk_end
+
+    #     print("Chunk data:", chunk_data)
+    #     return chunk_data
+
+    # except Exception as e:
+    #     logger.error(f"Document-based chunking failed: {e}")
+
 
 # Method 1 (from OmniPDF sample)
 # Split the filtered text into chunks for better translation
@@ -290,11 +496,6 @@ async def chunking(request: EmbeddingRequest) -> List[Dict[str, Any]]: # for Sem
 #             start = end
 
 #     return chunks
-
-
-# def embedding(doc_id: int):
-#     # Work-in-progress
-#     return {"doc_id": {doc_id}}
 
 
 # Fallback code for data chunking and embedding
@@ -379,3 +580,32 @@ async def chunking(request: EmbeddingRequest) -> List[Dict[str, Any]]: # for Sem
 
 #         # Retrieve relevant docs
 #         return results
+
+# RAGGING (part of chat service)
+# def rag(chunks, collection_name):
+#     # Load all data chunks into ChromaDB
+#     vectorstore = Chroma.from_documents(
+#         documents=documents,
+#         collection_name=collection_name,
+#         # embedding=Embeddings.ollama.OllamaEmbeddings(model='nomic-embed-text'),
+#         embedding=Embeddings,
+#     )
+#     # To check ChromaDB
+#     retriever = vectorstore.as_retriever()
+
+#     prompt_template = """Answer the question based only on the following context:
+#     {context}
+#     Question: {question}
+#     """
+#     prompt = ChatPromptTemplate.from_template(prompt_template)
+
+#     chain = (
+#         {"context": retriever, "question": RunnablePassthrough()}
+#         | prompt
+#         | local_llm
+#         | StrOutputParser()
+#     )
+
+#     # User prompt
+#     result = chain.invoke("What is the use of Text Splitting?")
+#     print(result)
