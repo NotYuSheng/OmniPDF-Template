@@ -65,5 +65,7 @@ async def delete_document(doc_id: str):
     key = f"{doc_id}.pdf"
     success = delete_file(key)
     if not success:
-        raise HTTPException(status_code=404, detail="Document not found or could not be deleted")
+        # Log the specific reason if possible, or rely on logs from delete_file
+        logger.error(f"Failed to delete document {key} or verify its deletion.")
+        raise HTTPException(status_code=500, detail="Failed to delete document or verify deletion. Please try again later.")
     logger.info(f"Successfully deleted document: {key}")
