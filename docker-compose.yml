@@ -10,6 +10,7 @@ services:
       - ./pdf_processor_service/.env
 
   redis:
+    container_name: redis
     image: redis:7.4.4-alpine
     expose:
       - "6379"
