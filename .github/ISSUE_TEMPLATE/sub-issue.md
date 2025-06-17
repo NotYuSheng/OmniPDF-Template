@@ -6,7 +6,7 @@
 
 ### What needs to be done
 
-\[Clearly describe the scope and purpose of the refactor or new feature. Mention where the current code resides, what its limitations are, and what the refactored version should support.]
+\[Clearly describe the scope and purpose of this sub-issue. If applicable, mention relevant existing code, its limitations, and what the outcome of this sub-issue should achieve.]
 
 ---
 
