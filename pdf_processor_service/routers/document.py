@@ -63,9 +63,8 @@ async def get_document(doc_id: str):
 @router.delete("/{doc_id}", status_code=204)
 async def delete_document(doc_id: str):
     key = f"{doc_id}.pdf"
-    success = delete_file(key)
     if success:
         logger.info(f"Successfully deleted document: {key}")
     else:
         logger.warning(f"Document not found or could not be deleted: {key}")
-        raise HTTPException(status_code=500, detail="Failed to delete document or verify deletion. Please try again later.")
+        raise HTTPException(status_code=404, detail="Document not found")
