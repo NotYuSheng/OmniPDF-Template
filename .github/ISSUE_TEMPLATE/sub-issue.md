@@ -12,14 +12,14 @@
 
 ### Tasks
 
-* [ ] Move `[filename].py` to a shared module (e.g. `shared/`, `common/`, or `shared_utils/`)
-* [ ] Add reusable functions to:
+* [ ] [Describe primary action/change for this sub-issue]
+* [ ] [If applicable, list sub-components or related actions:]
 
-  * [ ] \[Function 1 description]
-  * [ ] \[Function 2 description]
-* [ ] Update import paths in all dependent services (e.g. `[service_name]`)
-* [ ] Ensure all existing functionality works correctly after the move
-* [ ] Write or update unit tests if applicable
+  * [ ] [Sub-component/action 1]
+  * [ ] [Sub-component/action 2]
+* [ ] [Describe any necessary integration or update steps]
+* [ ] Ensure overall correctness and address any side-effects
+* [ ] Write or update unit/integration tests as needed
 
 ---
 
