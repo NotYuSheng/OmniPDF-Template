@@ -1,6 +1,5 @@
 from fastapi import FastAPI
-from routers import health, message
-from routers.chat import handler
+from routers import health, chat
 
 import logging
 
@@ -12,5 +11,4 @@ logging.basicConfig(
 app = FastAPI()
 
 app.include_router(health.router)
-app.include_router(message.router)
-app.include_router(handler.router, prefix="/chat")
+app.include_router(chat.router)

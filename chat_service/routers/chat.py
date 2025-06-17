@@ -6,11 +6,11 @@ import logging
 import os
 from models.chat import ChatRequest
 
-router = APIRouter()
+router = APIRouter(prefix="/chat")
 logger = logging.getLogger(__name__)
 
 
-@router.post("/chat")
+@router.post("/", status_code=201)
 async def handle_chat(
     chat_request: ChatRequest,
     client: OpenAI = Depends(get_openai_client),
@@ -19,9 +19,17 @@ async def handle_chat(
         response = await run_in_threadpool(
             client.chat.completions.create,
             model=os.getenv("OPENAI_MODEL", "qwen2.5-0.5b-instruct"),
-            messages=[{"role": "user", "content": chat_request.message}],
+            messages=[
+                {
+                    "role": "user",
+                    "content": chat_request.message,
+                    "doc_id": chat_request.doc_id
+                    if hasattr(chat_request, "doc_id")
+                    else None,
+                }
+            ],
         )
-    except APIError as e:
+    except APIError:
         logger.exception("OpenAI API error:")
         raise HTTPException(
             status_code=500,
