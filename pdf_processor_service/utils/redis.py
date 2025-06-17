@@ -11,7 +11,7 @@ from fastapi import Depends, Request, Response
 import json
 from redis import Redis
 
-# Stores the data as string using python pickle
+# Stores the data as string using json
 
 
 class SessionStorage:
@@ -71,7 +71,7 @@ def get_doc_list(
     request: Request, session_storage: SessionStorage = Depends(get_session_storage)
 ):
     session_id = request.cookies.get(config.session_id_name, "")
-    return session_storage[session_id]
+    return session_storage.get(session_id, [])
 
 
 def get_session_id(request: Request):
