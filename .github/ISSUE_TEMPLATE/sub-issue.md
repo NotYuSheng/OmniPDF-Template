@@ -1,4 +1,4 @@
-### Sub-Issue: \[Short Description of Refactor or Change]
+### Sub-Issue: \[Brief Description of the Sub-Task]
 
 **Related to**: #X
 
