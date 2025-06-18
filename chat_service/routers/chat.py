@@ -29,7 +29,7 @@ async def handle_chat(
                 {
                     "role": "user",
                     "content": chat_request.message,
-                    "id": chat_request.id,
+                    "content": chat_request.message,
                 }
             ],
         )
