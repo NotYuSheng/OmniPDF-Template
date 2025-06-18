@@ -2,12 +2,10 @@
 
 from fastapi import APIRouter, HTTPException, File, UploadFile, Form
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional
 import asyncio
-import io
 import boto3
 import logging
-from datetime import datetime
 import uuid
 import numpy as np
 # from unstructured.partition.pdf import partition_pdf
@@ -266,6 +264,7 @@ async def embedding(chunk_data: List[Dict[str, Any]], config: ProcessingConfig):
             )
             logger.info(f"Added chunk {chunk['chunk_id']} to collection")
 
+        # Part of the Chat Service
         results = collection.query(
             query_texts=["They keep moving."],
             n_results=min(2, len(chunk_data)),
@@ -500,7 +499,7 @@ async def pdf_embedder_service(request: DataRequest):
 
 # Fallback code for data chunking and embedding
 # DATA CHUNKING
-# Method 2 (online source)
+# Method 2 (source: https://python.langchain.com/docs/how_to/semantic-chunker/)
 # Percentile - all differences between sentences are calculated, and then any difference greater than the X percentile is split
 # text_splitter = SemanticChunker(Embeddings())
 # text_splitter = SemanticChunker(
