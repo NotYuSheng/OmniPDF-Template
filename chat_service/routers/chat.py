@@ -18,7 +18,9 @@ async def handle_chat(
     chat_request: ChatRequest,
     client: OpenAI = Depends(get_openai_client),
 ) -> dict[str, str]:
-    """Handle incoming chat requests and return AI responses."""
+    """
+    Handle incoming chat requests and return AI responses.
+    """
     try:
         response = await run_in_threadpool(
             client.chat.completions.create,
