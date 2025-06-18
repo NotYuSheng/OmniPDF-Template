@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.concurrency import run_in_threadpool
 from openai import OpenAI, APIError
-from .client import get_openai_client
+from ...shared_utils.client import get_openai_client
 import logging
 import os
 from models.chat import ChatRequest
