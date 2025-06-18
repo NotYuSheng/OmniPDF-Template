@@ -55,6 +55,28 @@ services:
         mc policy set none local/omnifiles
         exit 0;
       "
+  vllm:
+    container_name: gemini
+    image: vllm/vllm-openai:latest
+    runtime: nvidia
+    ipc: host
+    volumes:
+      - ./models/gemini/models--describeai--gemini/snapshots/aa5c52e95888664ccbb83d868de3b7b26ae123c3:/mnt/model/
+    #  - /home/ubuntu/.cache/hugging-face:/root/.cache/huggingface
+    ports:
+      - "80:8000"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0
+      - HF_HUB_OFFLINE=1
+    command: [
+      "--model", "/mnt/model/",
+      "--served-model-name","gemini",
+      "--max-model-len", "4096",
+    #  "--tensor-parallel-size", "4",
+    #  --tensor-parallel-size", "1",
+      "--gpu-memory-utilization", "0.5",
+    ]
 
+    # ./models/gemini/models--describeai--gemini/snapshots/aa5c52e95888664ccbb83d868de3b7b26ae123c3
 volumes:
   minio-data:
