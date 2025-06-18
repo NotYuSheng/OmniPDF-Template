@@ -30,18 +30,13 @@ async def handle_chat(
                 }
             ],
         )
-    except APIError:
-        logger.exception("OpenAI API error:")
-        raise HTTPException(
-            status_code=500,
-            detail="An error occurred while communicating with the AI service.",
-        )
-    except Exception:
-        logger.exception("An unexpected error occurred:")
-        raise HTTPException(
-            status_code=500,
-            detail="An internal server error occurred while processing your request.",
-        )
+    except APIError as e:
+        logger.error(f"Unexpected error during upload: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+    except Exception as e:
+        logger.error(f"Unexpected error during upload: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
     if not response.choices:
         logger.error("No choices found in OpenAI response: %s", response)
