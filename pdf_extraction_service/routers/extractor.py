@@ -65,7 +65,6 @@ def pdf_extraction(doc_id: str):
             pages = data['pages']
         )
 
-    except Exception as e:
+    except Exception:
         logger.exception("Docling failed to convert the document.")
-        raise HTTPException(status_code=500, detail=f"Failed to process the document with Docling.\n{e}")
-
+        raise HTTPException(status_code=500, detail="Failed to process the document with Docling. Please check server logs for more details.")

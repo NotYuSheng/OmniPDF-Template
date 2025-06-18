@@ -11,4 +11,4 @@ logging.basicConfig(
 app = FastAPI()
 
 app.include_router(health.router)
-app.include_router(extractor.router, prefix="/extraction")
+app.include_router(extractor.router)

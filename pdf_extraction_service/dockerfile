@@ -2,7 +2,7 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-ENV PYTHONPATH=/app/pdf_extraction:/app/shared_utils
+ENV PYTHONPATH=/app
 
 RUN apt-get update && apt-get install -y build-essential && rm -rf /var/lib/apt/lists/*
 COPY pdf_extraction_service/requirements.txt .
