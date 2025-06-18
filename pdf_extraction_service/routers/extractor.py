@@ -1,8 +1,6 @@
-from fastapi import APIRouter, File, UploadFile, HTTPException
-import uuid
+from fastapi import APIRouter, HTTPException
 import logging
-from shared_utils.s3_utils import upload_fileobj, generate_presigned_url, delete_file, s3_client, S3_BUCKET
-from pdf_extraction.models.extractor import PDFDataResponse
+from models.extractor import PDFDataResponse
 
 from docling.document_converter import DocumentConverter
 import json
