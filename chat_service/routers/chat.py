@@ -29,7 +29,6 @@ async def handle_chat(
                 {
                     "role": "user",
                     "content": chat_request.message,
-                    "content": chat_request.message,
                 }
             ],
         )
