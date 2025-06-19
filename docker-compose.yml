@@ -8,7 +8,7 @@ services:
       - "8000:8000"
     env_file:
       - ./pdf_processor_service/.env
-
+  
   chat_service:
     build:
       context: .
@@ -18,6 +18,12 @@ services:
       - "8006:8000"
     env_file:
       - ./chat_service/.env
+
+  redis:
+    container_name: redis
+    image: redis:7.4.4-alpine
+    expose:
+      - "6379"
 
   minio:
     image: minio/minio
