@@ -3,11 +3,12 @@ from os import getenv
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 
+from models.text_chunks import TextChunksResponse
 from utils.asynchttp import proxy_get, proxy_post
 from shared_utils.s3_utils import generate_presigned_url
 from shared_utils.redis import validate_session_doc_pair
 
-router = APIRouter(prefix="/documents", tags=["documents"])
+router = APIRouter(prefix="/text-chunks", tags=["text-chunks"])
 logger = logging.getLogger(__name__)
 TEXT_CHUNK_PROCESSOR_URL = getenv("TEXT_CHUNK_PROCESSOR_URL")
 if not TEXT_CHUNK_PROCESSOR_URL:
@@ -15,7 +16,7 @@ if not TEXT_CHUNK_PROCESSOR_URL:
 
 incomplete_jobs = []
 
-@router.get("/{doc_id}/text-chunks")
+@router.get("/{doc_id}", response_model=TextChunksResponse)
 async def get_pdf_text_chunks(
     doc_id: str,
     response: Response,

@@ -3,11 +3,12 @@ from os import getenv
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 
+from models.tables import TablesResponse
 from utils.asynchttp import proxy_get, proxy_post
 from shared_utils.s3_utils import generate_presigned_url
 from shared_utils.redis import validate_session_doc_pair
 
-router = APIRouter(prefix="/documents", tags=["documents"])
+router = APIRouter(prefix="/tables", tags=["tables"])
 logger = logging.getLogger(__name__)
 TABLE_PROCESSOR_URL = getenv("TABLE_PROCESSOR_URL")
 if not TABLE_PROCESSOR_URL:
@@ -15,7 +16,7 @@ if not TABLE_PROCESSOR_URL:
 
 incomplete_jobs = []
 
-@router.get("/{doc_id}/tables")
+@router.get("/{doc_id}", response_model=TablesResponse)
 async def get_pdf_tables(
     doc_id: str,
     response: Response,
