@@ -15,7 +15,7 @@ services:
       dockerfile: ./chat_service/Dockerfile
     container_name: chat_service
     ports:
-      - "8006:8000"
+      - "8001:8000"
     env_file:
       - ./chat_service/.env
 
