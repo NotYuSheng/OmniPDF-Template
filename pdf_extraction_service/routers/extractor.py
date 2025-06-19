@@ -48,17 +48,17 @@ def pdf_extraction(doc_id: str):
         logger.info(f"Extraction Completed in {elapsed_time:.2f} seconds")
 
         return PDFDataResponse(
-            schema_name = data['schema_name'],
-            version = data['version'],
-            name =  data['name'],
-            origin = data['origin'],
-            furniture = data['furniture'],
-            texts = data['texts'],
-            pictures = data['pictures'],
-            tables = data['tables'],
-            key_value_items = data['key_value_items'],
-            form_items = data['form_items'],
-            pages = data['pages']
+            schema_name = data.get('schema_name', ""),
+            version = data.get('version', ""),
+            name = data.get('name', ""),
+            origin = data.get('origin', {}),
+            furniture = data.get('furniture', {}),
+            texts = data.get('texts', []),
+            pictures = data.get('pictures', []),
+            tables = data.get('tables', []),
+            key_value_items = data.get('key_value_items', []),
+            form_items = data.get('form_items', []),
+            pages = data.get('pages', {})
         )
 
     except Exception:
