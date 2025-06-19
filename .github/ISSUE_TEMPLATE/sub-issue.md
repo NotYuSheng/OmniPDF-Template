@@ -1,3 +1,11 @@
+---
+name: Sub-Issue Template
+about: Use this for tracking sub-tasks under major issues
+title: "[Sub-Issue] "
+labels: 
+assignees: ''
+---
+
 ### Sub-Issue: \[Brief Description of the Sub-Task]
 
 **Related to**: #X
