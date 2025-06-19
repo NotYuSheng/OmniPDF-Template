@@ -3,7 +3,6 @@ import logging
 from models.extractor import PDFDataResponse
 
 from docling.document_converter import DocumentConverter
-import json
 import time
 import requests
 import torch
