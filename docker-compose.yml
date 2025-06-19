@@ -12,7 +12,7 @@ services:
   pdf_extraction:
     build:
       context: .
-      dockerfile: ./pdf_extraction_service/dockerfile
+      dockerfile: ./pdf_extraction_service/Dockerfile
     container_name: pdf_extraction_service
     ports:
       - "8001:8000"
