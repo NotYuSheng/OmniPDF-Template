@@ -52,6 +52,16 @@ services:
     expose:
       - "6379"
 
+  embedder_service:
+    build:
+      context: .
+      dockerfile: ./embedder_service/Dockerfile
+    container_name: embedder_service
+    ports:
+      - "8005:8000"
+    env_file:
+      - ./embedder_service/.env
+
   minio:
     image: minio/minio
     container_name: minio
