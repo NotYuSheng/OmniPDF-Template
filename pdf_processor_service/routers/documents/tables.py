@@ -1,15 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
 import logging
-from utils.redis import validate_session_doc_pair
 from os import getenv
-from httpx import AsyncClient
 
-router = APIRouter()
+from fastapi import APIRouter, Depends, HTTPException, Response
+
+from utils.asynchttp import proxy_get, proxy_post
+from shared_utils.s3_utils import generate_presigned_url
+from shared_utils.redis import validate_session_doc_pair
+
+router = APIRouter(prefix="/documents", tags=["documents"])
 logger = logging.getLogger(__name__)
 TABLE_PROCESSOR_URL = getenv("TABLE_PROCESSOR_URL")
 if not TABLE_PROCESSOR_URL:
     raise ValueError("TABLE_PROCESSOR_URL is not set")
 
+incomplete_jobs = []
 
 @router.get("/{doc_id}/tables")
 async def get_pdf_tables(
@@ -22,8 +26,18 @@ async def get_pdf_tables(
             status_code=403,
             detail="User not authorized to access this document or invalid document ID",
         )
-    async with AsyncClient() as client:
-        req = await client.get(f"{TABLE_PROCESSOR_URL}/{doc_id}")
-
-        response.status_code = req.status_code
-        return req.content
+    doc_is_processing = doc_id in incomplete_jobs
+    if not doc_is_processing:
+        download_url = generate_presigned_url(doc_id)
+        req = await proxy_post(
+            f"{TABLE_PROCESSOR_URL}",
+            body={"doc_id": doc_id, "download_url": download_url},
+        )
+    else:
+        req = await proxy_get(f"{TABLE_PROCESSOR_URL}/{doc_id}")
+    if req.status_code == 202 and not doc_is_processing:
+        incomplete_jobs.append(doc_id)
+    elif req.status_code == 200 and doc_is_processing:
+        incomplete_jobs.remove(doc_id)
+    response.status_code = req.status_code
+    return req.content

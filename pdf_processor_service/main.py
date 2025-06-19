@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from routers import health
 from routers import document
 from routers import session
+from routers.documents import images, tables, text_chunks
 import logging
 
 # Set up logger
@@ -15,3 +16,6 @@ app = FastAPI()
 app.include_router(health.router)
 app.include_router(document.router)
 app.include_router(session.router)
+app.include_router(images.router)
+app.include_router(tables.router)
+app.include_router(text_chunks.router)
