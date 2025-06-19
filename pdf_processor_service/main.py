@@ -1,8 +1,6 @@
 from fastapi import FastAPI
 from routers import health
-from routers import document
-from routers import session
-from routers.documents import images, tables, text_chunks
+from routers import document, images, session, tables, text_chunks
 import logging
 
 # Set up logger
