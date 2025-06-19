@@ -9,7 +9,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 
-app = FastAPI(swagger_ui_parameters={"syntaxHighlight": {"theme": "obsidian"}})
+app = FastAPI()
 
 # /Health endpoint
 app.include_router(health.router)
