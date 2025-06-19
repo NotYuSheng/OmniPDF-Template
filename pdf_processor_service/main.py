@@ -1,5 +1,7 @@
 from fastapi import FastAPI
-from routers import health, document
+from routers import health
+from routers import document
+from routers import session
 import logging
 
 # Set up logger
@@ -12,3 +14,4 @@ app = FastAPI()
 
 app.include_router(health.router)
 app.include_router(document.router)
+app.include_router(session.router)

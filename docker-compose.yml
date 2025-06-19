@@ -20,6 +20,22 @@ services:
       - ./pdf_extraction_service/.env
     depends_on:
       - minio
+  
+  chat_service:
+    build:
+      context: .
+      dockerfile: ./chat_service/Dockerfile
+    container_name: chat_service
+    ports:
+      - "8006:8000"
+    env_file:
+      - ./chat_service/.env
+
+  redis:
+    container_name: redis
+    image: redis:7.4.4-alpine
+    expose:
+      - "6379"
 
   minio:
     image: minio/minio
