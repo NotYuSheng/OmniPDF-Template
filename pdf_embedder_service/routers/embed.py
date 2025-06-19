@@ -1,6 +1,6 @@
 # For data chunking and embedding
 
-from fastapi import APIRouter, HTTPException, File, UploadFile, Form
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 import asyncio
@@ -15,10 +15,7 @@ import numpy as np
 from langchain_core.embeddings import Embeddings
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain.text_splitter import MarkdownTextSplitter
-from langchain_core.output_parsers import StrOutputParser
 from langchain_core.documents import Document
-from langchain_chroma import Chroma
-from langchain_community.chat_models import ChatOllama
 
 # Sentence transformers
 from sentence_transformers import SentenceTransformer
