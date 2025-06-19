@@ -3,11 +3,12 @@ from os import getenv
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 
+from models.images import ImageData
 from utils.asynchttp import proxy_get, proxy_post
 from shared_utils.s3_utils import generate_presigned_url
 from shared_utils.redis import validate_session_doc_pair
 
-router = APIRouter(prefix="/documents", tags=["documents"])
+router = APIRouter(prefix="/images", tags=["images"])
 logger = logging.getLogger(__name__)
 IMAGE_PROCESSOR_URL = getenv("IMAGE_PROCESSOR_URL")
 if not IMAGE_PROCESSOR_URL:
@@ -17,7 +18,7 @@ if not IMAGE_PROCESSOR_URL:
 incomplete_jobs = []
 
 
-@router.get("/{doc_id}/images")
+@router.get("/{doc_id}", response_model=ImageData)
 async def get_pdf_images(
     doc_id: str,
     response: Response,
