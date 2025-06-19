@@ -4,7 +4,6 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 import asyncio
-import boto3
 import logging
 import uuid
 import numpy as np
@@ -14,7 +13,7 @@ import numpy as np
 # Langchain components
 from langchain_core.embeddings import Embeddings
 from langchain_experimental.text_splitter import SemanticChunker
-from langchain.text_splitter import MarkdownTextSplitter
+# from langchain.text_splitter import MarkdownTextSplitter
 from langchain_core.documents import Document
 
 # Sentence transformers
