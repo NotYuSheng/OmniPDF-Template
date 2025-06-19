@@ -1,66 +1,67 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 import logging
-from models.extractor import PDFDataResponse
-
+from models.extractor import ExtractResponse, PDFDataResponse
 from docling.document_converter import DocumentConverter
+from storage.job_store import job_store
 import time
-import requests
-import torch
 
-router = APIRouter(prefix="/extractor", tags=["extractor"])
+router = APIRouter(prefix="/documents", tags=["documents"])
 logger = logging.getLogger(__name__)
 
-
-
-@router.post("/extract", response_model=PDFDataResponse)
-def pdf_extraction(doc_id: str):
+def process_pdf(doc_id: str, presign_url: str):
     start_time = time.time()
-
-    # r = requests.get(f"http://localhost:8000/documents/{doc_id}")
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    logger.info(f"Device: {device}")
-
-    try:
-        r = requests.get(f"http://pdf_processor_service:8000/documents/{doc_id}")
-        r.raise_for_status()  # Raises an HTTPError for bad responses (4xx or 5xx)
-    except requests.exceptions.HTTPError as http_err:
-        # http_err.response contains the response object
-        if http_err.response.status_code == 404:
-            raise HTTPException(status_code=404, detail=f"Document with ID '{doc_id}' not found.")
-        else:
-            logger.error(f"HTTP error occurred while fetching document: {http_err} - {http_err.response.text}")
-            raise HTTPException(status_code=http_err.response.status_code, detail="Error fetching document.")
-    except requests.exceptions.RequestException as err:
-        logger.error(f"Request error occurred while fetching document: {err}")
-        raise HTTPException(status_code=500, detail="Failed to connect to the document service.")
     try:
         converter = DocumentConverter()
-        result = converter.convert(r.json()['download_url'])
+        result = converter.convert(presign_url)
         data = result.document.export_to_dict()
 
         for ref in ['body', 'groups']:
             data.pop(ref, None)
 
-        elapsed_time = time.time() - start_time
+        job_store[doc_id] = {
+            "doc_id": doc_id,
+            "status": "complete",
+            "result": PDFDataResponse(
+                schema_name = data.get('schema_name', ""),
+                version = data.get('version', ""),
+                name = data.get('name', ""),
+                origin = data.get('origin', {}),
+                furniture = data.get('furniture', {}),
+                texts = data.get('texts', []),
+                pictures = data.get('pictures', []),
+                tables = data.get('tables', []),
+                key_value_items = data.get('key_value_items', []),
+                form_items = data.get('form_items', []),
+                pages = data.get('pages', {})
+            )
+        }
 
-        # Docling had an issue of an excessively long processing time
-        # This no longer occurs but take note if it occurs again (e.g. 5 min for a small pdf document where is should be a few seconds)
-        logger.info(f"Extraction Completed in {elapsed_time:.2f} seconds")
-
-        return PDFDataResponse(
-            schema_name = data.get('schema_name', ""),
-            version = data.get('version', ""),
-            name = data.get('name', ""),
-            origin = data.get('origin', {}),
-            furniture = data.get('furniture', {}),
-            texts = data.get('texts', []),
-            pictures = data.get('pictures', []),
-            tables = data.get('tables', []),
-            key_value_items = data.get('key_value_items', []),
-            form_items = data.get('form_items', []),
-            pages = data.get('pages', {})
-        )
+        logger.info(f"Time to process PDF: {time.time() - start_time}")
 
     except Exception:
         logger.exception("Docling failed to convert the document.")
-        raise HTTPException(status_code=500, detail="Failed to process the document with Docling. Please check server logs for more details.")
+        job_store[doc_id] = {
+            "doc_id": doc_id,
+            "status": "error",
+            "message": "Failed to download or parse document"
+        }
+
+@router.post("/extract", response_model=ExtractResponse)
+def submit_pdf(doc_id: str, download_url: str, background_tasks: BackgroundTasks):
+
+    job_store[doc_id] = {
+        "doc_id": doc_id,
+        "status": "processing"
+    }
+    
+    background_tasks.add_task(process_pdf, doc_id, download_url)
+    return ExtractResponse(doc_id=doc_id, status="processing")
+
+
+@router.get("/{doc_id}", response_model=ExtractResponse)
+def get_status(doc_id: str):
+    job = job_store.get(doc_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Document ID not found")
+
+    return ExtractResponse(**job)

@@ -1,14 +1,21 @@
 from pydantic import BaseModel
+from typing import Optional, List, Any
 
 class PDFDataResponse(BaseModel):
     schema_name: str
     version: str 
     name: str 
-    origin: dict 
-    furniture: dict
-    texts: list
-    pictures: list
-    tables: list
-    key_value_items: list
-    form_items: list
-    pages: dict
+    origin: Any
+    furniture: Any
+    texts: List[Any]
+    pictures: List[Any]
+    tables: List[Any]
+    key_value_items: List[Any]
+    form_items: List[Any]
+    pages: Any
+
+class ExtractResponse(BaseModel):
+    doc_id: str
+    status: str
+    result: Optional[PDFDataResponse] = None  # ✅ Make optional
+    message: Optional[str] = None             # ✅ Optional for error descriptions
