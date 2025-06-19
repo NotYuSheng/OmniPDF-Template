@@ -125,6 +125,17 @@ def validate_session_id(
     return session_id in session_storage
 
 
+def validate_session_doc_pair(
+    doc_id: str,
+    session_id: str = Depends(get_session_id),
+    session_storage: SessionStorage = Depends(get_session_storage),
+    valid_session: bool = Depends(validate_session_id),
+) -> bool:
+    if valid_session:
+        return doc_id in session_storage[session_id]
+    return False
+
+
 def get_doc_list_append_function(
     response: Response,
     session_id: str = Depends(get_session_id),
