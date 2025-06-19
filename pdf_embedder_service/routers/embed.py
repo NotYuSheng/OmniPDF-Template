@@ -72,10 +72,11 @@ class ProcessingResult(BaseModel):
 
 
 class DataRequest(BaseModel):
+    doc_id: str
     text: str
     config: ProcessingConfig
     pages_info: List[Dict]
-
+    
 
 # Method 1: Using Sentence Transformer for embedding of chunked data
 # Custom Embeddings class for Sentence Transformers
@@ -98,7 +99,6 @@ class SentenceTransformerEmbeddings(Embeddings):
 
 # Global instances
 embedding_model = None
-embeddings_instance = None
 semantic_chunker = None
 document_chunker = None
 chroma_client = None
@@ -213,6 +213,10 @@ async def chunking(request:DataRequest) -> List[Dict[str, Any]]: # for Semantic
             #         page_number = page_info['page_number']
             #         break
 
+            # Include doc_id in metadata
+            chunk_metadata = chunk.metadata.copy()
+            chunk_metadata["doc_id"] = request.doc_id
+
             # Skip chunks that are too small or too large (if necessary)
             # if (len(chunk_content.strip()) < request.config.min_chunk_size) or (len(chunk_content.strip()) > request.config.max_chunk_size):
             #     current_pos = chunk_end
@@ -227,7 +231,7 @@ async def chunking(request:DataRequest) -> List[Dict[str, Any]]: # for Semantic
             'end_char': chunk_end,
             'page_number': None,
             'chunk_index': len(chunk_data),
-            'metadata': chunk.metadata
+            'metadata': chunk_metadata # {"doc_id": request.doc_id}
             })
 
             current_pos = chunk_end
@@ -242,7 +246,7 @@ async def chunking(request:DataRequest) -> List[Dict[str, Any]]: # for Semantic
 
 
 async def embedding(chunk_data: List[Dict[str, Any]], config: ProcessingConfig):
-    global embedding_model, embeddings_instance, chroma_client
+    global embedding_model, chroma_client
 
     print("Starting embedding process...")
     await asyncio.sleep(1)
@@ -250,8 +254,9 @@ async def embedding(chunk_data: List[Dict[str, Any]], config: ProcessingConfig):
     try:
         try:
             print("Getting collection...")
-            collection = chroma_client.get_or_create_collection(name=config.collection_name) # using default embedding function
-            logger.info(f"Using embedding model: {collection._embedding_function}")
+            sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=config.embedding_model) # "all-MiniLM-L6-v2"
+            collection = chroma_client.get_or_create_collection(name=config.collection_name, embedding_function=sentence_transformer_ef) # using default embedding function
+            logger.info(f"Using embedding model: {config.embedding_model}")
             logger.info(f"Using existing collection: {config.collection_name}")
         except Exception as e:
             logger.error(f"Collection retrieval failed: {e}")
@@ -261,23 +266,29 @@ async def embedding(chunk_data: List[Dict[str, Any]], config: ProcessingConfig):
             collection.add(
                 ids=[chunk['chunk_id']],
                 documents=[chunk["content"]],
+                metadatas=[chunk["metadata"]]
             )
             logger.info(f"Added chunk {chunk['chunk_id']} to collection")
 
-        # Part of the Chat Service
-        results = collection.query(
-            query_texts=["They keep moving."],
-            n_results=min(2, len(chunk_data)),
-            include=["distances", "documents",  "metadatas"]
-        )
-
-        serialized_results = serialize_chroma_results(results)
-
         return {
             "collection_name": config.collection_name,
-            "total_chunks_added": len(chunk_data),
-            "sample_query_results": serialized_results
+            "total_chunks_added": len(chunk_data)
         }
+
+        # Part of the Chat Service
+        # results = collection.query(
+        #     query_texts=["They keep moving."],
+        #     n_results=min(2, len(chunk_data)),
+        #     include=["distances", "documents",  "metadatas", "embeddings"]
+        # )
+
+        # serialized_results = serialize_chroma_results(results)
+
+        # return {
+        #     "collection_name": config.collection_name,
+        #     "total_chunks_added": len(chunk_data),
+        #     "sample_query_results": serialized_results
+        # }
 
     except Exception as e:
         logger.error(f"Embedding process failed: {e}")
@@ -286,17 +297,21 @@ async def embedding(chunk_data: List[Dict[str, Any]], config: ProcessingConfig):
 
 @router.post("/embed")
 async def pdf_embedder_service(request: DataRequest):
-    global embedding_model, embeddings_instance, chroma_client, semantic_chunker, document_chunker
+    global embedding_model, chroma_client, semantic_chunker
+    # global document_chunker
 
     if embedding_model is None:
         logger.info("Loading embedding model...")
-        embedding_model = SentenceTransformer(request.config.embedding_model)
-        embeddings_instance = SentenceTransformerEmbeddings(request.config.embedding_model)
+        # embedding_model = SentenceTransformer(request.config.embedding_model)
+        embedding_model = SentenceTransformerEmbeddings(request.config.embedding_model)
+        logger.info(request.config.embedding_model)
 
+    # Semantic Chunking
     if semantic_chunker is None:
         logger.info("Initializing semantic chunker...")
-        semantic_chunker = SemanticChunker(embeddings_instance, breakpoint_threshold_type="percentile", breakpoint_threshold_amount=90)
+        semantic_chunker = SemanticChunker(embedding_model, breakpoint_threshold_type="percentile", breakpoint_threshold_amount=90)
 
+    # Alternative: Document-Based Chunking
     # if document_chunker is None:
     #     logger.info("Initializing document-based chunker...")
     #     document_chunker = MarkdownTextSplitter(chunk_size = 40, chunk_overlap=0)
@@ -306,6 +321,7 @@ async def pdf_embedder_service(request: DataRequest):
         chroma_client = chromadb.Client() # data stored in memory, not on disk
 
     try:
+        # Extracted data has to be chunked up first before being embedded and stored into ChromaDB
         chunk_data = await chunking(request=request)
 
         if not chunk_data:
@@ -315,6 +331,7 @@ async def pdf_embedder_service(request: DataRequest):
         
         return {
                 "status": "success",
+                "doc_id": request.doc_id,
                 "chunks_created": len(chunk_data),
                 "embedding_results": embed_results,
                 "chunk_details": [
@@ -334,6 +351,45 @@ async def pdf_embedder_service(request: DataRequest):
     except Exception as e:
         logger.error(f"PDF embedder service failed: {e}")
         raise HTTPException(status_code=500, detail=f"Service failed: {str(e)}")
+    
+
+@router.get("/status/{doc_id}")
+async def verify_document_embedding(doc_id: str, collection_name: str = "my_documents"):
+    """Verify if a document's chunks have been successfully embedded"""
+    global chroma_client
+    
+    try:
+        if chroma_client is None:
+            raise HTTPException(status_code=500, detail="ChromaDB client not initialized")
+        
+        collection = chroma_client.get_collection(name=collection_name)
+        
+        # Query by doc_id in metadata
+        results = collection.get(
+            where={"doc_id": doc_id},
+            include=["documents", "metadatas", "embeddings"]
+        )
+        
+        if not results['ids']:
+            return {
+                "doc_id": doc_id,
+                "status": "not_found",
+                "chunks_found": 0,
+                "message": f"No chunks found for document {doc_id}"
+            }
+        
+        return {
+            "doc_id": doc_id,
+            "status": "found",
+            "chunks_found": len(results['ids']),
+            "chunk_ids": results['ids'],
+            "chunks_have_embeddings": len(results.get('embeddings', [])) > 0,
+            "sample_content": results['documents']if results['documents'] else None
+        }
+        
+    except Exception as e:
+        logger.error(f"Document verification failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Verification failed: {str(e)}")
 
 
     # METHOD 2: Level 3 Document-Based Chunking
