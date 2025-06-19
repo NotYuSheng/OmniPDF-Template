@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routers import health, embed, embed_status
+from routers import health, embed
 import logging
 
 
@@ -14,6 +14,5 @@ app = FastAPI(swagger_ui_parameters={"syntaxHighlight": {"theme": "obsidian"}})
 # /Health endpoint
 app.include_router(health.router)
 # /Embed endpoint
-app.include_router(embed.router)
 # /Status/{doc_id} endpoint
-app.include_router(embed_status.router)
+app.include_router(embed.router)
