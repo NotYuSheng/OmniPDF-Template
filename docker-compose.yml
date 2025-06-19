@@ -1,15 +1,16 @@
 services:
   pdf_processor_service:
     build:
-      context: ./pdf_processor_service
+      context: .
+      dockerfile: ./pdf_processor_service/Dockerfile
     container_name: pdf_processor_service
     ports:
       - "8000:8000"
     env_file:
       - ./pdf_processor_service/.env
-      - ./.env
 
   redis:
+    container_name: redis
     image: redis:7.4.4-alpine
     expose:
       - "6379"
