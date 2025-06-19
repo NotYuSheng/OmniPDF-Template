@@ -4,7 +4,7 @@ OmniPDF is a PDF analyzer capable of translation, summarization, captioning and 
 
 ## Port Assignments
 
-The following port mappings are used across the OmniPDF microservices **for development and testing purposes only**. These are defined explicitly in the `docker-compose.yml` file to ensure clarity and avoid conflicts during local deployment.
+The following port mappings are used across the OmniPDF microservices **for development and testing purposes only**. Ports for some core services are defined in the `docker-compose.yml` file, while other services listed are common components in the development setup (potentially run separately or via other configurations). This table aims to ensure clarity and avoid conflicts during local deployment.
 
 > **Note:** These port numbers are **not** intended for production. Actual port exposure should be handled by Kubernetes Ingress, OpenShift Routes, or a reverse proxy in secured environments.
 
