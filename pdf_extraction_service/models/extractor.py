@@ -17,5 +17,5 @@ class PDFDataResponse(BaseModel):
 class ExtractResponse(BaseModel):
     doc_id: str
     status: str
-    result: Optional[PDFDataResponse] = None  # ✅ Make optional
-    message: Optional[str] = None             # ✅ Optional for error descriptions
+    result: Optional[PDFDataResponse] = None
+    message: Optional[str] = None
