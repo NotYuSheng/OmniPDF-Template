@@ -1,8 +1,9 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi.responses import JSONResponse
 import logging
 import time
 
-from models.extractor import ExtractResponse, PDFDataResponse
+from models.extractor import ExtractResponse
 from docling.document_converter import DocumentConverter
 from shared_utils.s3_utils import save_job, load_job
 
@@ -49,14 +50,13 @@ def process_pdf(doc_id: str, presign_url: str):
         }
         save_job(doc_id, error_job)
 
-@router.post("/extract", response_model=ExtractResponse)
+@router.post("/extract", response_model=ExtractResponse, status_code=202)
 def submit_pdf(doc_id: str, download_url: str, background_tasks: BackgroundTasks):
-    # Save initial processing state
     save_job(doc_id, {
         "doc_id": doc_id,
         "status": "processing"
     })
-    
+
     background_tasks.add_task(process_pdf, doc_id, download_url)
     return ExtractResponse(doc_id=doc_id, status="processing")
 
@@ -65,5 +65,11 @@ def get_status(doc_id: str):
     job = load_job(doc_id)
     if not job:
         raise HTTPException(status_code=404, detail="Document ID not found")
-    
+
+    if job.get("status") == "error":
+        raise HTTPException(status_code=500, detail=job.get("message", "Processing failed"))
+
+    if job.get("status") == "processing":
+        return JSONResponse(status_code=204, content=None)
+
     return ExtractResponse(**job)
