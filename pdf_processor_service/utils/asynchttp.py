@@ -5,13 +5,6 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-# async def get_from_url():
-#     async with httpx.AsyncClient() as client:
-#         req = await client.get(getenv("IMAGE_PROCESSOR_URL") + f"/{doc_id}")
-
-#         response.status_code = req.status_code
-#         return req.content
-    
 async def proxy_get(url: str):
     async with httpx.AsyncClient() as client:
         try:
