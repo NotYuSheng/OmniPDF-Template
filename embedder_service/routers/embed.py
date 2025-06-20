@@ -212,6 +212,10 @@ async def chunking(request:DataRequest) -> List[Dict[str, Any]]: # for Semantic
             # Include doc_id in metadata
             chunk_metadata = chunk.metadata.copy()
             chunk_metadata["doc_id"] = request.doc_id
+            # "metadata": {
+            #     "text_chunk_key": f"text_chunk_{page_number + 1}_{chunk_idx + 1}",
+            #     "type": "text",
+            # },
 
             # Skip chunks that are too small or too large (if necessary)
             # if (len(chunk_content.strip()) < request.config.min_chunk_size) or (len(chunk_content.strip()) > request.config.max_chunk_size):
@@ -237,15 +241,104 @@ async def chunking(request:DataRequest) -> List[Dict[str, Any]]: # for Semantic
     except Exception as e:
         logger.error(f"Semantic chunking failed: {e}")
         raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
-        # Fallback to simple chunking
-        # return simple_chunk_text(text, config, pages_info)
+
+
+    # METHOD 2: Level 3 Document-Based Chunking
+    # """Perform document-based chunking"""
+    # Source: https://github.com/FullStackRetrieval-com/RetrievalTutorials/blob/main/tutorials/LevelsOfTextSplitting/5_Levels_Of_Text_Splitting.ipynb
+    # filepath = "test"
+
+    # raw_pdf_elements = partition_pdf(
+    #     filename=filepath,
+    #     extract_images_in_pdf=True,
+    #     infer_table_structure=True,
+    #     chunking_strategy="by_title",
+    #     max_characters=4000,
+    #     new_after_n_chars=3800,
+    #     combine_text_under_n_chars=2000,
+    #     image_output_dir_path="static/pdfImages/",
+    # )
+
+    # markdown_text = """
+    # # Fun in California
+
+    # ## Driving
+
+    # Try driving on the 1 down to San Diego
+
+    # ### Food
+
+    # Make sure to eat a burrito while you're there
+
+    # ## Hiking
+
+    # Go to Yosemite
+    # """
+    # print([markdown_text])
+
+    # try:
+    #     chunks = document_chunker.create_documents([markdown_text])
+    #     print("Chunks:", chunks)
+    #     print("Number of chunks:", len(chunks))
+
+    #     # # Reject by returning empty list if PDF document has no content
+    #     if not markdown_text.strip():
+    #         raise HTTPException(status_code=400, detail="No text content found in PDF")
+    
+    #     chunk_data = []
+    #     current_pos = 0
+
+    #     for i, chunk in enumerate(chunks):
+    #         # First iteration: Extract first chunk of doc.page_content
+    #         chunk_content = chunk.page_content
+    #         print(f"Length of chunk {i+1}:", len(chunk_content.strip()))
+    #         # First iteration: Start from first chunk of doc.page_context
+    #         chunk_start = markdown_text.find(chunk_content, current_pos)
+
+    #         if chunk_start == -1:
+    #             chunk_start = current_pos
+
+    #         chunk_end = chunk_start + len(chunk_content)
+
+    #         # # Find which page this chunk belongs to
+    #         # page_number = None
+    #         # for page_info in request.pages_info:
+    #         #     if (chunk_start >= page_info['char_start'] and
+    #         #             chunk_start < page_info['char_end']):
+    #         #         page_number = page_info['page_number']
+    #         #         break
+
+    #         # Skip chunks that are too small or too large (if necessary)
+    #         # if (len(chunk_content.strip()) < request.config.min_chunk_size) or (len(chunk_content.strip()) > request.config.max_chunk_size):
+    #         #     current_pos = chunk_end
+    #         #     print("Hi")
+    #         #     continue
+
+    #         # else:
+    #         chunk_data.append({
+    #         'chunk_id': str(uuid.uuid4()),
+    #         'content': chunk_content.strip(),
+    #         'start_char': chunk_start,
+    #         'end_char': chunk_end,
+    #         'page_number': None,
+    #         'chunk_index': len(chunk_data),
+    #         'metadata': chunk.metadata
+    #         })
+
+    #         current_pos = chunk_end
+
+    #     print("Chunk data:", chunk_data)
+    #     return chunk_data
+
+    # except Exception as e:
+    #     logger.error(f"Document-based chunking failed: {e}")
 
 
 async def embedding(chunk_data: List[Dict[str, Any]], config: ProcessingConfig):
     global embedding_model, chroma_client
 
     print("Starting embedding process...")
-    
+
     try:
         try:
             print("Getting collection...")
@@ -385,197 +478,6 @@ async def verify_document_embedding(doc_id: str, collection_name: str = "my_docu
     except Exception as e:
         logger.error(f"Document verification failed: {e}")
         raise HTTPException(status_code=500, detail=f"Verification failed: {str(e)}")
-
-
-    # METHOD 2: Level 3 Document-Based Chunking
-    # """Perform document-based chunking"""
-    # Source: https://github.com/FullStackRetrieval-com/RetrievalTutorials/blob/main/tutorials/LevelsOfTextSplitting/5_Levels_Of_Text_Splitting.ipynb
-    # filepath = "test"
-
-    # raw_pdf_elements = partition_pdf(
-    #     filename=filepath,
-    #     extract_images_in_pdf=True,
-    #     infer_table_structure=True,
-    #     chunking_strategy="by_title",
-    #     max_characters=4000,
-    #     new_after_n_chars=3800,
-    #     combine_text_under_n_chars=2000,
-    #     image_output_dir_path="static/pdfImages/",
-    # )
-
-    # markdown_text = """
-    # # Fun in California
-
-    # ## Driving
-
-    # Try driving on the 1 down to San Diego
-
-    # ### Food
-
-    # Make sure to eat a burrito while you're there
-
-    # ## Hiking
-
-    # Go to Yosemite
-    # """
-    # print([markdown_text])
-
-    # try:
-    #     chunks = document_chunker.create_documents([markdown_text])
-    #     print("Chunks:", chunks)
-    #     print("Number of chunks:", len(chunks))
-
-    #     # # Reject by returning empty list if PDF document has no content
-    #     if not markdown_text.strip():
-    #         raise HTTPException(status_code=400, detail="No text content found in PDF")
-    
-    #     chunk_data = []
-    #     current_pos = 0
-
-    #     for i, chunk in enumerate(chunks):
-    #         # First iteration: Extract first chunk of doc.page_content
-    #         chunk_content = chunk.page_content
-    #         print(f"Length of chunk {i+1}:", len(chunk_content.strip()))
-    #         # First iteration: Start from first chunk of doc.page_context
-    #         chunk_start = markdown_text.find(chunk_content, current_pos)
-
-    #         if chunk_start == -1:
-    #             chunk_start = current_pos
-
-    #         chunk_end = chunk_start + len(chunk_content)
-
-    #         # # Find which page this chunk belongs to
-    #         # page_number = None
-    #         # for page_info in request.pages_info:
-    #         #     if (chunk_start >= page_info['char_start'] and
-    #         #             chunk_start < page_info['char_end']):
-    #         #         page_number = page_info['page_number']
-    #         #         break
-
-    #         # Skip chunks that are too small or too large (if necessary)
-    #         # if (len(chunk_content.strip()) < request.config.min_chunk_size) or (len(chunk_content.strip()) > request.config.max_chunk_size):
-    #         #     current_pos = chunk_end
-    #         #     print("Hi")
-    #         #     continue
-
-    #         # else:
-    #         chunk_data.append({
-    #         'chunk_id': str(uuid.uuid4()),
-    #         'content': chunk_content.strip(),
-    #         'start_char': chunk_start,
-    #         'end_char': chunk_end,
-    #         'page_number': None,
-    #         'chunk_index': len(chunk_data),
-    #         'metadata': chunk.metadata
-    #         })
-
-    #         current_pos = chunk_end
-
-    #     print("Chunk data:", chunk_data)
-    #     return chunk_data
-
-    # except Exception as e:
-    #     logger.error(f"Document-based chunking failed: {e}")
-
-
-# Method 1 (from OmniPDF sample)
-# Split the filtered text into chunks for better translation
-# "standard_deviation", "interquartile"
-# text_splitter = SemanticChunker(
-#     Embeddings(), breakpoint_threshold_type="percentile")
-# text_chunks = text_splitter.split_text(filtered_text)
-
-# translated_text = ""
-# for chunk_idx, text_chunk in enumerate(text_chunks):
-#     translated_text_chunk = translate_text(text_chunk, CLIENT)
-#     translated_text += translated_text_chunk
-
-#     # Add text documents
-#     documents.append(
-#         {
-#             "page_content": translated_text_chunk,
-#             "metadata": {
-#                 "text_chunk_key": f"text_chunk_{page_number + 1}_{chunk_idx + 1}",
-#                 "type": "text",
-#             },
-#         }
-#     )
-    
-
-# Fallback to simple chunking
-# def simple_chunk_text(text: str, config: ProcessingConfig, pages_info: List[Dict]) -> List[Dict[str, Any]]:
-#     """Fallback simple chunking method"""
-#     chunks = []
-#     start = 0
-#     chunk_index = 0
-
-#     while start < len(text):
-#         end = min(start + config.chunk_size, len(text))
-
-#         # Try to break at sentence boundaries
-#         if end < len(text):
-#             for i in range(end, max(start + config.min_chunk_size, end - 100), -1):
-#                 if text[i] in '.!?':
-#                     end = i + 1
-#                     break
-
-#         chunk_text = text[start:end].strip()
-
-#         if len(chunk_text) >= config.min_chunk_size:
-#             # Find page number
-#             page_number = None
-#             for page_info in pages_info:
-#                 if (start >= page_info['char_start'] and
-#                     start < page_info['char_end']):
-#                     page_number = page_info['page_number']
-#                     break
-
-#             chunks.append({
-#                 'chunk_id': str(uuid.uuid4()),
-#                 'content': chunk_text,
-#                 'start_char': start,
-#                 'end_char': end,
-#                 'page_number': page_number,
-#                 'chunk_index': chunk_index,
-#                 'metadata': {}
-#             })
-#             chunk_index += 1
-
-#         start = end - config.overlap
-#         if start >= end:
-#             start = end
-
-#     return chunks
-
-
-# Fallback code for data chunking and embedding
-# DATA CHUNKING
-# Method 2 (source: https://python.langchain.com/docs/how_to/semantic-chunker/)
-# Percentile - all differences between sentences are calculated, and then any difference greater than the X percentile is split
-# text_splitter = SemanticChunker(Embeddings())
-# text_splitter = SemanticChunker(
-#     # "standard_deviation", "interquartile"
-#     Embeddings(), breakpoint_threshold_type="percentile"
-# )
-# documents = text_splitter.create_documents([text])
-# print(documents)
-
-# DATA EMBEDDING (from OmniPDF sample)
-# class NomicEmbeddings(Embeddings):
-#     def __init__(self, model: str):
-#         self.model = model
-#         self.client = CLIENT
-
-#     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-#         """Embed search docs."""
-#         return [
-#             self.client.embeddings.create(input=[_], model=self.model).data[0].embedding
-#             for _ in texts
-#         ]
-
-#     def embed_query(self, text: str) -> List[float]:
-#         """Embed query text."""
-#         return self.embed_documents([text])[0]
 
 
 # class RAGHelper:
