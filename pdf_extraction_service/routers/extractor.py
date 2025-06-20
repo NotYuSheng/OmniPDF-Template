@@ -41,8 +41,8 @@ def process_pdf(doc_id: str, presign_url: str):
         save_job(doc_id, job_data)
         logger.info(f"Time to process PDF: {time.time() - start_time}")
 
-    except Exception:
-        logger.exception("Docling failed to convert the document.")
+    except Exception as e:
+        logger.exception(f"Docling failed to convert the document for doc_id: {doc_id} - {e}")
         error_job = {
             "doc_id": doc_id,
             "status": "error",

@@ -92,7 +92,7 @@ def save_job(doc_id: str, job_data: Union[dict, BaseModel]) -> bool:
         file_obj = BytesIO(json.dumps(payload).encode("utf-8"))
         return upload_fileobj(file_obj, key=f"jobs/{doc_id}.json", content_type="application/json")
     except Exception as e:
-        logger.exception(f"Failed to save job: {e}")
+        logger.exception(f"Failed to save job for doc_id: {doc_id} - {e}")
         return False
 
 def load_job(doc_id: str) -> Optional[dict]:
@@ -103,6 +103,6 @@ def load_job(doc_id: str) -> Optional[dict]:
         response = s3_client.get_object(Bucket=S3_BUCKET, Key=f"jobs/{doc_id}.json")
         return json.loads(response["Body"].read().decode("utf-8"))
     except (ClientError, BotoCoreError, json.JSONDecodeError) as e:
-        logger.exception(f"Failed to load job: {e}")
+        logger.exception(f"Failed to load job for doc_id: {doc_id} - {e}")
         return None
 
