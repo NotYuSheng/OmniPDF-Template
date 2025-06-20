@@ -3,6 +3,8 @@ from typing import List, Dict
 
 
 class ProcessingConfig(BaseModel):
+    """Config model for embed API endpoint."""
+
     chunk_size: int = Field(
         default=512, description="Target chunk size in characters")
     overlap: int = Field(
@@ -22,6 +24,8 @@ class ProcessingConfig(BaseModel):
 
 
 class DataRequest(BaseModel):
+    """Request model for embed API endpoint."""
+    
     doc_id: str
     text: str
     config: ProcessingConfig
