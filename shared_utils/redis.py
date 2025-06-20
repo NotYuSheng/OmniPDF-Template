@@ -66,7 +66,7 @@ class ServiceCache:
         self.client.sadd(key, value)
 
     def contains(self, key: str, value: str):
-        self.client.sismember(key, value)
+        return self.client.sismember(key, value)
 
     def remove(self, key: str, value: str):
         self.client.srem(key, value)
@@ -186,7 +186,8 @@ def get_doc_list_remove_function(
 
     def remove_doc(filename: str):
         session_data: list[str] = session_storage[session_id]
-        session_data.remove(filename)
-        session_storage[session_id] = session_data
+        if filename in session_data:
+            session_data.remove(filename)
+            session_storage[session_id] = session_data
 
     return remove_doc
