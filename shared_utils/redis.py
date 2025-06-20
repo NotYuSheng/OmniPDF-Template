@@ -175,3 +175,18 @@ def get_doc_list_append_function(
         session_storage[session_id] = session_data
 
     return append_doc
+
+def get_doc_list_remove_function(
+    response: Response,
+    session_id: str = Depends(get_session_id),
+    session_storage: SessionStorage = Depends(get_session_storage),
+) -> Callable[[str], None]:
+    if not validate_session_id(session_id, session_storage):
+        session_id = create_new_session(response, session_storage=session_storage)
+
+    def remove_doc(filename: str):
+        session_data: list[str] = session_storage[session_id]
+        session_data.remove(filename)
+        session_storage[session_id] = session_data
+
+    return remove_doc

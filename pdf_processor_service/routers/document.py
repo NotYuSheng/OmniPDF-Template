@@ -8,7 +8,11 @@ from shared_utils.s3_utils import (
     s3_client,
     S3_BUCKET,
 )
-from shared_utils.redis import get_doc_list_append_function, validate_session_doc_pair
+from shared_utils.redis import (
+    get_doc_list_append_function,
+    get_doc_list_remove_function,
+    validate_session_doc_pair,
+)
 from models.document import DocumentUploadResponse
 from botocore.exceptions import ClientError
 
@@ -84,7 +88,9 @@ async def get_document(
 
 @router.delete("/{doc_id}", status_code=204)
 async def delete_document(
-    doc_id: str, valid_request: bool = Depends(validate_session_doc_pair)
+    doc_id: str,
+    valid_request: bool = Depends(validate_session_doc_pair),
+    remove_doc=Depends(get_doc_list_remove_function),
 ):
     if not valid_request:
         raise HTTPException(
@@ -95,6 +101,7 @@ async def delete_document(
     key = f"{doc_id}.pdf"
     success = delete_file(key)
     if success:
+        remove_doc(doc_id)
         logger.info(f"Successfully deleted document: {key}")
     else:
         logger.warning(f"Document not found or could not be deleted: {key}")
