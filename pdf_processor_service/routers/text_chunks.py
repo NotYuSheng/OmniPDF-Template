@@ -29,7 +29,7 @@ async def get_pdf_text_chunks(
         )
     doc_is_processing = doc_id in incomplete_jobs
     if not doc_is_processing:
-        download_url = generate_presigned_url(doc_id)
+        download_url = generate_presigned_url(f"{doc_id}.pdf")
         req = await proxy_post(
             f"{TEXT_CHUNK_PROCESSOR_URL}",
             body={"doc_id": doc_id, "download_url": download_url},
