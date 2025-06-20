@@ -45,4 +45,4 @@ async def get_pdf_tables(
     elif req.status_code == 200 and doc_is_processing:
         service_cache.remove(__name__, doc_id)
     response.status_code = req.status_code
-    return req.content
+    return req.json()
