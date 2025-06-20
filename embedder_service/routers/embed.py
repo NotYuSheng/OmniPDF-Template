@@ -71,14 +71,14 @@ chroma_client = None
 #         return None
 
 
-async def chunking(request:DataRequest) -> List[Dict[str, Any]]: # for Semantic
-# def chunking() -> List[Dict[str, Any]]: # for Document-Based
-    """Perform chunking / splitting of data via either Document-Based Chunking or Semantic Chunking"""
+async def chunking(request:DataRequest) -> List[Dict[str, Any]]:
+    """Perform chunking / splitting of data via Semantic Chunking using LangChain's SemanticChunker,
+    and reject by returning empty list if PDF document has no content"""
+
     global embedding_model, semantic_chunker, document_chunker
 
     logger.info("Starting chunking process...")
 
-    
     # METHOD 1: Semantic Chunking
     # Perform semantic chunking using LangChain's SemanticChunker
     # Reject by returning empty list if PDF document has no content
@@ -247,6 +247,8 @@ async def chunking(request:DataRequest) -> List[Dict[str, Any]]: # for Semantic
 
 
 async def embedding(chunk_data: List[Dict[str, Any]], config: ProcessingConfig):
+    """Embed data chunks of PDF document into ChromaDB"""
+
     global embedding_model, chroma_client
 
     logger.info("Starting embedding process...")
@@ -297,6 +299,7 @@ async def embedding(chunk_data: List[Dict[str, Any]], config: ProcessingConfig):
 
 # def serialize_chroma_results(results: Dict[str, Any]) -> Dict[str, Any]:
 #     """Convert ChromaDB query results to JSON-serializable format"""
+
 #     serialized = {}
     
 #     for key, value in results.items():
@@ -330,6 +333,8 @@ async def embedding(chunk_data: List[Dict[str, Any]], config: ProcessingConfig):
 
 @router.post("/embed")
 async def pdf_embedder_service(request: DataRequest):
+    "Chunk up and embed data from PDF document into ChromaDB"
+
     global embedding_model, chroma_client, semantic_chunker
     # global document_chunker
 
@@ -388,7 +393,7 @@ async def pdf_embedder_service(request: DataRequest):
 
 @router.get("/status/{doc_id}")
 async def verify_document_embedding(doc_id: str, collection_name: str = "my_documents"):
-    """Verify if a document's chunks have been successfully embedded"""
+    """Verify if a document's data chunks have been successfully embedded into ChromaDB"""
     global chroma_client
     
     try:
