@@ -2,7 +2,11 @@ import os
 import logging
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
-from typing import Optional
+from typing import Optional, Union
+from pydantic import BaseModel
+
+import json
+from io import BytesIO
 
 logger = logging.getLogger(__name__)
 
@@ -75,3 +79,30 @@ def delete_file(key: str) -> bool:
     except (BotoCoreError, ClientError) as e:
         logger.exception(f"Failed to delete file from S3: {e}")
         return False
+    
+def save_job(doc_id: str, job_data: Union[dict, BaseModel]) -> bool:
+    """
+    Saves job data to S3 under a key based on the doc_id.
+    """
+    try:
+        if isinstance(job_data, BaseModel):
+            payload = job_data.model_dump()
+        else:
+            payload = job_data
+        file_obj = BytesIO(json.dumps(payload).encode("utf-8"))
+        return upload_fileobj(file_obj, key=f"jobs/{doc_id}.json", content_type="application/json")
+    except Exception as e:
+        logger.exception(f"Failed to save job for doc_id: {doc_id} - {e}")
+        return False
+
+def load_job(doc_id: str) -> Optional[dict]:
+    """
+    Loads job data from S3 given a doc_id.
+    """
+    try:
+        response = s3_client.get_object(Bucket=S3_BUCKET, Key=f"jobs/{doc_id}.json")
+        return json.loads(response["Body"].read().decode("utf-8"))
+    except (ClientError, BotoCoreError, json.JSONDecodeError) as e:
+        logger.exception(f"Failed to load job for doc_id: {doc_id} - {e}")
+        return None
+
