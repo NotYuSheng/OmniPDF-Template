@@ -7,7 +7,7 @@ ENV PYTHONPATH=/app/embedder_service:/app/shared_utils
 RUN apt-get update && apt-get install -y build-essential && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements.txt from embedder_service folder in root context
-COPY pdf_embedder_service/requirements.txt .
+COPY embedder_service/requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY shared_utils ./shared_utils
 
 # Copy embedder_service folder from root context into /app/embedder_service
-COPY pdf_embedder_service ./embedder_service
+COPY embedder_service ./embedder_service
 
 EXPOSE 8000
 
