@@ -1,12 +1,10 @@
 # For data chunking and embedding
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional
-import asyncio
+from typing import List, Dict, Any
 import logging
 import uuid
-import numpy as np
+from models.embed import ProcessingConfig, DataRequest
 # from unstructured.partition.pdf import partition_pdf
 # from unstructured.staging.base import elements_to_json
 
@@ -26,53 +24,6 @@ from chromadb.utils import embedding_functions
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-
-class ProcessingConfig(BaseModel):
-    chunk_size: int = Field(
-        default=512, description="Target chunk size in characters")
-    overlap: int = Field(
-        default=50, description="Overlap between chunks in characters")
-    # Default embedding model provided by Sentence Transformers
-    embedding_model: str = Field(
-        default="all-MiniLM-L6-v2", description="Sentence Transformer model")
-    # Better embedding model to be tested
-    # embedding_model: str = Field(
-    #     default="all-mpnet-base-v2", description="Sentence Transformer model")
-    min_chunk_size: int = Field(default=100, description="Minimum chunk size")
-    max_chunk_size: int = Field(default=1000, description="Maximum chunk size")
-    store_in_chroma: bool = Field(
-        default=True, description="Store embeddings in ChromaDB")
-    collection_name: str = Field(
-        default="my_documents", description="ChromaDB collection name")
-
-
-class ChunkData(BaseModel):
-    chunk_id: str
-    source_file: Optional[str] = None
-    content: str
-    start_char: int
-    end_char: int
-    page_number: Optional[int] = None
-    embedding: List[float]
-    metadata: Dict[str, Any] = {}
-
-
-
-class ProcessingResult(BaseModel):
-    doc_id: str
-    filename: str
-    total_chunks: int
-    chunks: List[ChunkData]
-    processing_time: float
-    metadata: Dict[str, Any] = {}
-
-
-class DataRequest(BaseModel):
-    doc_id: str
-    text: str
-    config: ProcessingConfig
-    pages_info: List[Dict]
-    
 
 # Method 1: Using Sentence Transformer for embedding of chunked data
 # Custom Embeddings class for Sentence Transformers
@@ -120,45 +71,12 @@ chroma_client = None
 #         return None
 
 
-def serialize_chroma_results(results: Dict[str, Any]) -> Dict[str, Any]:
-    """Convert ChromaDB query results to JSON-serializable format"""
-    serialized = {}
-    
-    for key, value in results.items():
-        if key == 'embeddings' and value is not None:
-            # Convert numpy arrays to lists for embeddings
-            if isinstance(value, list) and len(value) > 0:
-                if isinstance(value[0], np.ndarray):
-                    serialized[key] = [emb.tolist() for emb in value]
-                elif isinstance(value[0], list):
-                    # Already in list format
-                    serialized[key] = value
-                else:
-                    serialized[key] = value
-            else:
-                serialized[key] = value
-        elif key == 'distances' and value is not None:
-            # Handle distances (might be numpy arrays)
-            if isinstance(value, list) and len(value) > 0:
-                if isinstance(value[0], np.ndarray):
-                    serialized[key] = [dist.tolist() for dist in value]
-                else:
-                    serialized[key] = value
-            else:
-                serialized[key] = value
-        else:
-            # Handle other fields normally
-            serialized[key] = value
-    
-    return serialized
-
-
 async def chunking(request:DataRequest) -> List[Dict[str, Any]]: # for Semantic
 # def chunking() -> List[Dict[str, Any]]: # for Document-Based
     """Perform chunking / splitting of data via either Document-Based Chunking or Semantic Chunking"""
     global embedding_model, semantic_chunker, document_chunker
 
-    print("Starting chunking process...")
+    logger.info("Starting chunking process...")
 
     
     # METHOD 1: Semantic Chunking
@@ -179,12 +97,10 @@ async def chunking(request:DataRequest) -> List[Dict[str, Any]]: # for Semantic
 
         # Create a Document object
         doc = Document(page_content=request.text.strip())
-        # print("Text:", [doc])
 
         # Use semantic chunker
         chunks = semantic_chunker.split_documents([doc])
-        # print("Chunks:", chunks)
-        print("Number of chunks:", len(chunks))
+        logger.info("Number of chunks:", len(chunks))
 
         chunk_data = []
         current_pos = 0
@@ -192,7 +108,7 @@ async def chunking(request:DataRequest) -> List[Dict[str, Any]]: # for Semantic
         for i, chunk in enumerate(chunks):
             # First iteration: Extract first chunk of doc.page_content
             chunk_content = chunk.page_content
-            print(f"Length of chunk {i+1}:", len(chunk_content.strip()))
+            logger.info(f"Length of chunk {i+1}:", len(chunk_content.strip()))
             # First iteration: Start from first chunk of doc.page_context
             chunk_start = request.text.find(chunk_content, current_pos)
 
@@ -220,7 +136,6 @@ async def chunking(request:DataRequest) -> List[Dict[str, Any]]: # for Semantic
             # Skip chunks that are too small or too large (if necessary)
             # if (len(chunk_content.strip()) < request.config.min_chunk_size) or (len(chunk_content.strip()) > request.config.max_chunk_size):
             #     current_pos = chunk_end
-            #     print("Hi")
             #     continue
 
             # else:
@@ -236,7 +151,7 @@ async def chunking(request:DataRequest) -> List[Dict[str, Any]]: # for Semantic
 
             current_pos = chunk_end
 
-        print("Chunk data:", chunk_data)
+        logger.info("Chunk data:", chunk_data)
         return chunk_data
     except Exception as e:
         logger.error(f"Semantic chunking failed: {e}")
@@ -274,12 +189,10 @@ async def chunking(request:DataRequest) -> List[Dict[str, Any]]: # for Semantic
 
     # Go to Yosemite
     # """
-    # print([markdown_text])
 
     # try:
     #     chunks = document_chunker.create_documents([markdown_text])
-    #     print("Chunks:", chunks)
-    #     print("Number of chunks:", len(chunks))
+    #     logger.info("Number of chunks:", len(chunks))
 
     #     # # Reject by returning empty list if PDF document has no content
     #     if not markdown_text.strip():
@@ -291,7 +204,7 @@ async def chunking(request:DataRequest) -> List[Dict[str, Any]]: # for Semantic
     #     for i, chunk in enumerate(chunks):
     #         # First iteration: Extract first chunk of doc.page_content
     #         chunk_content = chunk.page_content
-    #         print(f"Length of chunk {i+1}:", len(chunk_content.strip()))
+    #         logger.info(f"Length of chunk {i+1}:", len(chunk_content.strip()))
     #         # First iteration: Start from first chunk of doc.page_context
     #         chunk_start = markdown_text.find(chunk_content, current_pos)
 
@@ -311,7 +224,6 @@ async def chunking(request:DataRequest) -> List[Dict[str, Any]]: # for Semantic
     #         # Skip chunks that are too small or too large (if necessary)
     #         # if (len(chunk_content.strip()) < request.config.min_chunk_size) or (len(chunk_content.strip()) > request.config.max_chunk_size):
     #         #     current_pos = chunk_end
-    #         #     print("Hi")
     #         #     continue
 
     #         # else:
@@ -327,7 +239,7 @@ async def chunking(request:DataRequest) -> List[Dict[str, Any]]: # for Semantic
 
     #         current_pos = chunk_end
 
-    #     print("Chunk data:", chunk_data)
+    #     logger.info("Chunk data:", chunk_data)
     #     return chunk_data
 
     # except Exception as e:
@@ -337,11 +249,11 @@ async def chunking(request:DataRequest) -> List[Dict[str, Any]]: # for Semantic
 async def embedding(chunk_data: List[Dict[str, Any]], config: ProcessingConfig):
     global embedding_model, chroma_client
 
-    print("Starting embedding process...")
+    logger.info("Starting embedding process...")
 
     try:
         try:
-            print("Getting collection...")
+            logger.info("Getting collection...")
             sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=config.embedding_model) # "all-MiniLM-L6-v2"
             collection = chroma_client.get_or_create_collection(name=config.collection_name, embedding_function=sentence_transformer_ef) # using default embedding function
             logger.info(f"Using embedding model: {config.embedding_model}")
@@ -381,6 +293,39 @@ async def embedding(chunk_data: List[Dict[str, Any]], config: ProcessingConfig):
     except Exception as e:
         logger.error(f"Embedding process failed: {e}")
         raise HTTPException(status_code=500, detail=f"Embedding failed: {str(e)}")
+
+
+# def serialize_chroma_results(results: Dict[str, Any]) -> Dict[str, Any]:
+#     """Convert ChromaDB query results to JSON-serializable format"""
+#     serialized = {}
+    
+#     for key, value in results.items():
+#         if key == 'embeddings' and value is not None:
+#             # Convert numpy arrays to lists for embeddings
+#             if isinstance(value, list) and len(value) > 0:
+#                 if isinstance(value[0], np.ndarray):
+#                     serialized[key] = [emb.tolist() for emb in value]
+#                 elif isinstance(value[0], list):
+#                     # Already in list format
+#                     serialized[key] = value
+#                 else:
+#                     serialized[key] = value
+#             else:
+#                 serialized[key] = value
+#         elif key == 'distances' and value is not None:
+#             # Handle distances (might be numpy arrays)
+#             if isinstance(value, list) and len(value) > 0:
+#                 if isinstance(value[0], np.ndarray):
+#                     serialized[key] = [dist.tolist() for dist in value]
+#                 else:
+#                     serialized[key] = value
+#             else:
+#                 serialized[key] = value
+#         else:
+#             # Handle other fields normally
+#             serialized[key] = value
+    
+#     return serialized
 
 
 @router.post("/embed")
@@ -560,4 +505,4 @@ async def verify_document_embedding(doc_id: str, collection_name: str = "my_docu
 
 #     # User prompt
 #     result = chain.invoke("What is the use of Text Splitting?")
-#     print(result)
+#     logger.info(result)
