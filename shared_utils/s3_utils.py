@@ -2,7 +2,7 @@ import os
 import logging
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
-from typing import Optional
+from typing import Optional, Union
 from pydantic import BaseModel
 
 import json
@@ -80,7 +80,7 @@ def delete_file(key: str) -> bool:
         logger.exception(f"Failed to delete file from S3: {e}")
         return False
     
-def save_job(doc_id: str, job_data: dict) -> bool:
+def save_job(doc_id: str, job_data: Union[dict, BaseModel]) -> bool:
     """
     Saves job data to S3 under a key based on the doc_id.
     """

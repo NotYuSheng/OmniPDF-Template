@@ -70,6 +70,6 @@ def get_status(doc_id: str):
         raise HTTPException(status_code=500, detail=job.get("message", "Processing failed"))
 
     if job.get("status") == "processing":
-        return JSONResponse(status_code=204, content=None)
+        return ExtractResponse(doc_id=doc_id, status="processing", result=job.get("result"), message=job.get("message"))
 
     return ExtractResponse(**job)
