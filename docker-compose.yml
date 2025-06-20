@@ -1,12 +1,29 @@
 services:
   pdf_processor_service:
     build:
-      context: ./pdf_processor_service
+      context: .
+      dockerfile: ./pdf_processor_service/Dockerfile
     container_name: pdf_processor_service
     ports:
       - "8000:8000"
     env_file:
       - ./pdf_processor_service/.env
+  
+  chat_service:
+    build:
+      context: .
+      dockerfile: ./chat_service/Dockerfile
+    container_name: chat_service
+    ports:
+      - "8001:8000"
+    env_file:
+      - ./chat_service/.env
+
+  redis:
+    container_name: redis
+    image: redis:7.4.4-alpine
+    expose:
+      - "6379"
 
   embedder_service:
     build:
