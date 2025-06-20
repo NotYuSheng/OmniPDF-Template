@@ -10,4 +10,4 @@ class ImageData(BaseModel):
 class ImageResponse(BaseModel):
     doc_id: str
     filename: str
-    tables: list[ImageData]
+    images: list[ImageData]
