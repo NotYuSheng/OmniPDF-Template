@@ -245,8 +245,7 @@ async def embedding(chunk_data: List[Dict[str, Any]], config: ProcessingConfig):
     global embedding_model, chroma_client
 
     print("Starting embedding process...")
-    await asyncio.sleep(1)
-
+    
     try:
         try:
             print("Getting collection...")
