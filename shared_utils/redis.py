@@ -39,7 +39,7 @@ class SessionStorage:
         self.client.set(
             key,
             json.dumps(value),
-            ex=config.expireTime,
+            ex=config.expire_time,
         )
 
     def __delitem__(self, key: str):
@@ -55,6 +55,23 @@ class SessionStorage:
         return session_id
 
 
+class ServiceCache:
+    def __init__(self):
+        self.client = Redis.from_url(config.redis_url)
+
+    def __getitem__(self, key: str):
+        return self.client.smembers(key)
+
+    def add(self, key: str, value: str):
+        self.client.sadd(key, value)
+
+    def contains(self, key: str, value: str):
+        self.client.sismember(key, value)
+
+    def remove(self, key: str, value: str):
+        self.client.srem(key, value)
+
+
 def generate_session_id() -> str:
     return uuid4().hex
 
@@ -66,7 +83,7 @@ class Config(BaseSettings):
     redis_url: str = getenv("REDIS_URL")
     settings: dict = settings
     session_id_name: str = "OmniPDFSession"
-    expireTime: timedelta = timedelta(hours=24)
+    expire_time: timedelta = timedelta(hours=24)
 
     def generate_session_id(self) -> str:
         return self.settings["session_id_generator"]()
@@ -78,6 +95,11 @@ config = Config()
 def get_session_storage() -> Generator:
     storage = SessionStorage()
     yield storage
+
+
+def get_service_cache() -> Generator:
+    service_cache = ServiceCache()
+    yield service_cache
 
 
 def get_doc_list(
