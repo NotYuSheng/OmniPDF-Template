@@ -8,6 +8,8 @@ on:
 jobs:
   trivy-scan:
     runs-on: ubuntu-latest
+    env:
+      TRIVY_EXCLUDE_SERVICES: ${{ secrets.TRIVY_EXCLUDE_SERVICES }}
 
     steps:
       - name: Checkout repository
@@ -35,13 +37,12 @@ jobs:
           echo "GIT_TAG=${FALLBACK_TAG}-${SHORT_SHA}" >> $GITHUB_ENV
           echo "REPO_OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
 
-      - name: Copy example.env files to .env
+      - name: Copy example.env to .env
         run: |
-          echo "Replicating example.env files..."
+          echo "Copying example.env to .env..."
           find . -name "example.env" | while read f; do
-            target="$(dirname "$f")/.env"
-            cp "$f" "$target"
-            echo "✓ Created $target"
+            cp "$f" "$(dirname "$f")/.env"
+            echo "✓ Created $(dirname "$f")/.env"
           done
 
       - name: Build all Docker Compose services
@@ -53,8 +54,20 @@ jobs:
         run: |
           echo "Running Trivy scans..."
           SERVICES=$(docker compose config --services)
+
           for SERVICE in $SERVICES; do
+            if [[ " $TRIVY_EXCLUDE_SERVICES " =~ " $SERVICE " ]]; then
+              echo "Skipping $SERVICE (excluded via secret)"
+              continue
+            fi
+
             IMAGE_ID=$(docker compose images -q $SERVICE)
+
+            if [[ -z "$IMAGE_ID" ]]; then
+              echo "Skipping $SERVICE (no image built)"
+              continue
+            fi
+
             echo "Scanning $SERVICE ($IMAGE_ID)..."
-            trivy image --exit-code 1 --severity CRITICAL,HIGH --no-progress $IMAGE_ID
+            trivy image --exit-code 1 --severity CRITICAL,HIGH --no-progress "$IMAGE_ID"
           done
