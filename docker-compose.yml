@@ -26,8 +26,6 @@ services:
     container_name: pdf_extraction_service
     ports:
       - "8002:8000"
-    env_file:
-      - ./pdf_extraction_service/.env
     depends_on:
       - minio
 
