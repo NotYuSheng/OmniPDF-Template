@@ -61,7 +61,7 @@ jobs:
               continue
             fi
 
-            IMAGE_ID=$(docker compose images -q $SERVICE)
+            IMAGE_ID=$(docker images --filter=reference="*${SERVICE}*" --format "{{.ID}}" | head -n1)
 
             if [[ -z "$IMAGE_ID" ]]; then
               echo "Skipping $SERVICE (no image built)"
