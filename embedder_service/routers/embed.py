@@ -5,18 +5,13 @@ from typing import List, Dict, Any
 import logging
 import uuid
 from models.embed import ProcessingConfig, DataRequest
+from models.chunker_with_embedder import chunker
 # from unstructured.partition.pdf import partition_pdf
 # from unstructured.staging.base import elements_to_json
 # import numpy as np
 
-# Langchain components
-from langchain_core.embeddings import Embeddings
-from langchain_experimental.text_splitter import SemanticChunker
 # from langchain.text_splitter import MarkdownTextSplitter
 from langchain_core.documents import Document
-
-# Sentence transformers
-from sentence_transformers import SentenceTransformer
 
 # ChromaDB
 import chromadb
@@ -27,31 +22,8 @@ logger = logging.getLogger(__name__)
 
 
 # Method 1: Using Sentence Transformer for embedding of chunked data
-# Custom Embeddings class for Sentence Transformers
-class SentenceTransformerEmbeddings(Embeddings):
-    """Custom embeddings class for Sentence Transformers"""
-
-    def __init__(self, model_name: str):
-        self.model = SentenceTransformer(model_name)
-
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        """Embed a list of documents"""
-        embeddings = self.model.encode(texts, convert_to_tensor=False)
-        return embeddings.tolist()
-
-    def embed_query(self, text: str) -> List[float]:
-        """Embed a single query"""
-        embedding = self.model.encode([text], convert_to_tensor=False)
-        return embedding[0].tolist()
-
-chroma_client = chromadb.Client() # data stored in memory, not on disk
-
-
-async def chunker(config: ProcessingConfig):
-    """Helper function to get tools based on current request's config"""
-    emb_model = SentenceTransformerEmbeddings(config.embedding_model)
-    sem_chunker = SemanticChunker(emb_model, breakpoint_threshold_type="percentile", breakpoint_threshold_amount=90)
-    return sem_chunker
+chroma_client = chromadb.EphemeralClient() # data stored in memory, not on disk
+# chroma_client = chromadb.HttpClient(host="localhost", port=5100)
 
 
 async def chunking_and_embedding(request:DataRequest, chunker) -> List[Dict[str, Any]]:
@@ -207,7 +179,7 @@ async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: Processin
 async def pdf_embedder_service(request: DataRequest):
     "Chunk up and embed data from PDF document into ChromaDB"
 
-    semantic_chunker = await chunker(request.config)
+    semantic_chunker = chunker(request.config)
     
     try:
         # Extracted data has to be chunked up first before being embedded and stored into ChromaDB
