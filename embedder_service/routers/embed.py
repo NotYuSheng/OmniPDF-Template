@@ -6,16 +6,12 @@ import logging
 import uuid
 from models.embed import ProcessingConfig, DataRequest
 from models.chunker_with_embedder import chunker
-# from unstructured.partition.pdf import partition_pdf
-# from unstructured.staging.base import elements_to_json
 # import numpy as np
 
-# from langchain.text_splitter import MarkdownTextSplitter
 from langchain_core.documents import Document
 
 # ChromaDB
 import chromadb
-# from chromadb.utils import embedding_functions
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
