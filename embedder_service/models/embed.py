@@ -27,6 +27,6 @@ class DataRequest(BaseModel):
     """Request model for embed API endpoint."""
     
     doc_id: str
-    text: str
+    text: str # to be received in JSON format from PDF Extraction Service
     config: ProcessingConfig
     pages_info: List[Dict]
