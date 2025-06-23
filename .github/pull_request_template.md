@@ -28,7 +28,7 @@ Fixes #<issue_number>
 
 ---
 
-### FastAPI Application Checklist (Delete if PR is not relevant)
+### FastAPI Application Checklist (**Delete if PR is not relevant**)
 
 - [ ] API follows RESTful principles (nouns in routes, proper use of verbs)
 - [ ] All endpoints are async and use non-blocking I/O
