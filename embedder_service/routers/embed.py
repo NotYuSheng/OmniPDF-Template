@@ -92,8 +92,6 @@ async def data_chunking(request:DataRequest, chunker) -> List[Dict[str, Any]]:
 async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: ProcessingConfig):
     """Embed data chunks of PDF document into ChromaDB"""
 
-    global chroma_client
-
     logger.info("Starting embedding process...")
 
     try:
@@ -226,7 +224,6 @@ async def pdf_embedder_service(request: DataRequest):
 @router.get("/status/{doc_id}")
 async def verify_document_embedding(doc_id: str, collection_name: str = "my_documents"):
     """Verify if a document's data chunks have been successfully embedded into ChromaDB"""
-    global chroma_client
     
     try:
         if chroma_client is None:
