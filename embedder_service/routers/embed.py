@@ -106,13 +106,28 @@ async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: Processin
             logger.error(f"Collection retrieval failed: {e}")
             raise HTTPException(status_code=500, detail=f"Collection retrieval failed: {str(e)}")
         
-        for chunk in chunk_data:
-            collection.add(
-                ids=[chunk['chunk_id']],
-                documents=[chunk["content"]],
-                metadatas=[chunk["metadata"]]
-            )
-            logger.info(f"Added chunk {chunk['chunk_id']} to collection")
+        # for chunk in chunk_data:
+        #     collection.add(
+        #         ids=[chunk['chunk_id']],
+        #         documents=[chunk["content"]],
+        #         metadatas=[chunk["metadata"]]
+        #     )
+        #     logger.info(f"Added chunk {chunk['chunk_id']} to collection")
+
+        ids = [chunk['chunk_id'] for chunk in chunk_data]
+        documents = [chunk['content'] for chunk in chunk_data]
+        metadatas = [chunk['metadata'] for chunk in chunk_data]
+
+        if not ids:
+            logger.warning("No chunks to add to the collection.")
+            return
+        
+        collection.add(
+            ids=ids,
+            documents=documents,
+            metadatas=metadatas
+        )
+        logger.info(f"Added {len(ids)} chunks to collection '{config.collection_name}'")
 
         return {
             "collection_name": config.collection_name,
