@@ -59,6 +59,16 @@ services:
       - pdf_processor_service
       - chat_service
 
+  docling_translation_service:
+    build:
+      context: .
+      dockerfile: ./docling_translation_service/Dockerfile
+    container_name: docling_translation_service
+    ports:
+      - "8003:8000"
+    # depends_on:
+    #   - redis
+
   redis:
     container_name: redis
     image: redis:7.4.4-alpine
