@@ -1,5 +1,10 @@
 from pydantic import BaseModel, Field
 from typing import List, Dict
+import os
+
+_EMBEDDING_MODEL_DEFAULT = "all-MiniLM-L6-v2"
+EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL", _EMBEDDING_MODEL_DEFAULT)
+print(EMBEDDING_MODEL_NAME)
 
 
 class ProcessingConfig(BaseModel):
@@ -11,10 +16,7 @@ class ProcessingConfig(BaseModel):
         default=50, description="Overlap between chunks in characters")
     # Default embedding model provided by Sentence Transformers
     embedding_model: str = Field(
-        default="all-MiniLM-L6-v2", description="Sentence Transformer model")
-    # Better embedding model to be tested
-    # embedding_model: str = Field(
-    #     default="all-mpnet-base-v2", description="Sentence Transformer model")
+        default=EMBEDDING_MODEL_NAME, description="Sentence Transformer model")
     min_chunk_size: int = Field(default=100, description="Minimum chunk size")
     max_chunk_size: int = Field(default=1000, description="Maximum chunk size")
     store_in_chroma: bool = Field(
