@@ -35,7 +35,7 @@ def get_embedding_model(model_name: str):
     """Get a cached SentenceTransformerEmbeddings model."""
     return SentenceTransformerEmbeddingFunction(model_name)
 
-
+@lru_cache(maxsize=5)
 def get_chunking_model(config: ProcessingConfig):
     """Helper function to get tools based on current request's config"""
     # emb_model = get_embedding_model(config.embedding_model)
