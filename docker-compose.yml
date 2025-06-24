@@ -64,7 +64,7 @@ services:
   
   chromadb:
     container_name: chromadb
-    image: chromadb/chroma
+    image: chromadb/chroma:1.0.14
     expose:
       - "5100"
 
