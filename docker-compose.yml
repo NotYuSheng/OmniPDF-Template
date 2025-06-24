@@ -18,7 +18,7 @@ services:
       - "8001:8000"
     env_file:
       - ./chat_service/.env
-
+      
   pdf_extraction:
     build:
       context: .
@@ -29,11 +29,29 @@ services:
     depends_on:
       - minio
 
+  embedder_service:
+    build:
+      context: .
+      dockerfile: ./embedder_service/Dockerfile
+    container_name: embedder_service
+    ports:
+      - "8005:8000"
+    env_file:
+      - ./embedder_service/.env
+    depends_on:
+      - chromadb
+  
   redis:
     container_name: redis
     image: redis:7.4.4-alpine
     expose:
       - "6379"
+  
+  chromadb:
+    container_name: chromadb
+    image: chromadb/chroma:1.0.14
+    expose:
+      - "5100"
 
   minio:
     image: minio/minio
