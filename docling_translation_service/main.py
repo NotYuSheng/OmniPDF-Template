@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from routers import health
 from docling_translation_service.routers import translation
-from routers import session
 import logging
 
 # Set up logger
@@ -14,4 +13,3 @@ app = FastAPI()
 
 app.include_router(health.router)
 app.include_router(translation.router)
-app.include_router(session.router)

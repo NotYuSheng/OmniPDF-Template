@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Query, Body
-from models.translation import TranslateResponse, DoclingTranslationResponse
+from models.translate import TranslateResponse, DoclingTranslationResponse
 from typing import Optional
 
 import logging
@@ -46,7 +46,8 @@ def translate(prompt, input_lang=None, output_lang="English"):
 def doc_translate(
     data: DoclingTranslationResponse = Body(...),
     input_lang: Optional[str] = Query(None),
-    output_lang: str = Query("English")):
+    output_lang: str = Query("English")
+    ):
 
     for entry in data["texts"]:
         original_text = entry.get("text") or entry.get("orig")
