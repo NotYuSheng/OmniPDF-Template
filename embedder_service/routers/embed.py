@@ -27,7 +27,7 @@ chroma_client = chromadb.EphemeralClient()
 # chroma_client = chromadb.HttpClient(host="localhost", port=5100)
 
 
-async def chunking_and_embedding(request:DataRequest, chunker) -> List[Dict[str, Any]]:
+async def data_chunking(request:DataRequest, chunker) -> List[Dict[str, Any]]:
     """Perform chunking / splitting of data via Semantic Chunking using LangChain's SemanticChunker,
     and reject by returning empty list if PDF document has no content"""
 
@@ -181,7 +181,7 @@ async def pdf_embedder_service(request: DataRequest):
     
     try:
         # Extracted data has to be chunked up first before being embedded and stored into ChromaDB
-        chunk_embeddings = await chunking_and_embedding(request, semantic_chunker)
+        chunk_embeddings = await data_chunking(request, semantic_chunker)
 
         if not chunk_embeddings:
             raise HTTPException(status_code=400, detail="No chunks were created from the input text") 
