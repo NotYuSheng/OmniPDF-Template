@@ -51,7 +51,7 @@ async def data_chunking(request:DataRequest, chunker) -> List[Dict[str, Any]]:
         for i, chunk in enumerate(chunks):
             # First iteration: Extract first chunk of doc.page_content
             chunk_content = chunk.page_content
-            logger.info(f"Length of chunk {i+1}:", len(chunk_content.strip()))
+            logger.info(f"Length of chunk {i+1}: {len(chunk_content.strip())}")
             # First iteration: Start from first chunk of doc.page_context
             chunk_start = request.text.find(chunk_content, current_pos)
 
