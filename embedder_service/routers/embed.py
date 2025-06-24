@@ -96,8 +96,7 @@ async def data_chunking(request:DataRequest, chunker) -> List[Dict[str, Any]]:
             'end_char': chunk_end,
             'page_number': None,
             'chunk_index': len(chunk_data),
-            # 'metadata': chunk_metadata # {"doc_id": request.doc_id}
-            'metadata': {"doc_id": request.doc_id}
+            'metadata': chunk_metadata
             })
 
             current_pos = chunk_end
