@@ -32,6 +32,14 @@ services:
     container_name: embedder_service
     ports:
       - "8005:8000"
+    env_file:
+      - ./embedder_service/.env
+  
+  chromadb:
+    container_name: 
+    image: 
+    expose:
+      - "5100"
 
   minio:
     image: minio/minio
