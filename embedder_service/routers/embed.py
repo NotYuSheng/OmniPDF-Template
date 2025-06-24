@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 import logging
 import uuid
 from models.embed import ProcessingConfig, DataRequest
-from models.chunker_with_embedder import chunker
+from models.helper import get_chunking_model, get_embedding_model
 # from unstructured.partition.pdf import partition_pdf
 # from unstructured.staging.base import elements_to_json
 # import numpy as np
@@ -83,13 +83,14 @@ async def data_chunking(request:DataRequest, chunker) -> List[Dict[str, Any]]:
 
             current_pos = chunk_end
 
+        logger.info(chunk_data)
         return chunk_data
     except Exception as e:
         logger.error(f"Semantic chunking failed: {e}")
         raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
 
 
-async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: ProcessingConfig):
+async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: ProcessingConfig, emb_model):
     """Embed data chunks of PDF document into ChromaDB"""
 
     logger.info("Starting embedding process...")
@@ -97,7 +98,7 @@ async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: Processin
     try:
         try:
             logger.info("Getting collection...")
-            collection = chroma_client.get_or_create_collection(name=config.collection_name) # using config.embedding_model
+            collection = chroma_client.get_or_create_collection(name=config.collection_name, embedding_function=emb_model)
             logger.info(f"Using existing collection: {config.collection_name}")
         except Exception as e:
             logger.error(f"Collection retrieval failed: {e}")
@@ -189,7 +190,8 @@ async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: Processin
 async def pdf_embedder_service(request: DataRequest):
     "Chunk up and embed data from PDF document into ChromaDB"
 
-    semantic_chunker = chunker(request.config)
+    semantic_chunker = get_chunking_model(request.config)
+    embedding_model = get_embedding_model(request.config.embedding_model)
     
     try:
         # Extracted data has to be chunked up first before being embedded and stored into ChromaDB
@@ -198,7 +200,7 @@ async def pdf_embedder_service(request: DataRequest):
         if not chunk_data:
             raise HTTPException(status_code=400, detail="No chunks were created from the input text") 
         
-        embed_results = await vectorize_chromadb(chunk_data, request.config)
+        embed_results = await vectorize_chromadb(chunk_data, request.config, embedding_model)
         
         return {
                 "status": "success",
@@ -208,6 +210,7 @@ async def pdf_embedder_service(request: DataRequest):
                 "chunk_details": [
                     {
                         "chunk_id": chunk["chunk_id"],
+                        "chunk_index": chunk["chunk_index"],
                         "content": chunk["content"],
                         "content_length": len(chunk["content"]),
                         "start_char": chunk["start_char"],
