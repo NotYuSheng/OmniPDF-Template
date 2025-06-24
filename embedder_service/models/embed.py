@@ -1,10 +1,10 @@
 from pydantic import BaseModel, Field
-from typing import List, Dict
+from typing import List, Dict, Optional
 import os
+from langchain_experimental.text_splitter import BreakpointThresholdType
 
 _EMBEDDING_MODEL_DEFAULT = "all-MiniLM-L6-v2"
 EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL", _EMBEDDING_MODEL_DEFAULT)
-print(EMBEDDING_MODEL_NAME)
 
 
 class ProcessingConfig(BaseModel):
@@ -17,6 +17,10 @@ class ProcessingConfig(BaseModel):
     # Default embedding model provided by Sentence Transformers
     embedding_model: str = Field(
         default=EMBEDDING_MODEL_NAME, description="Sentence Transformer model")
+    breakpoint_threshold_type: BreakpointThresholdType = Field(
+        default="percentile", description="Breakpoint threshold type")
+    breakpoint_threshold_amount: Optional[float] = Field(
+        default=90, description="Breakpoint threshold amount")
     min_chunk_size: int = Field(default=100, description="Minimum chunk size")
     max_chunk_size: int = Field(default=1000, description="Maximum chunk size")
     store_in_chroma: bool = Field(
