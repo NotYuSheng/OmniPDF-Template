@@ -37,6 +37,10 @@ services:
       - "80:80"
     env_file:
       - ./nginx_service/.env
+    depends_on:
+      - pdf_extraction
+      - pdf_processor_service
+      - chat_service
 
   redis:
     container_name: redis

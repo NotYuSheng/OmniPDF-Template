@@ -3,7 +3,14 @@ server {
     server_name localhost;
 
     location /processor/ {
-        proxy_pass ${PROCESSOR_URL};
+        proxy_pass ${PDF_PROCESSOR_URL};
     }
 
+    location /extractor/ {
+        proxy_pass ${PDF_EXTRACTOR_URL};
+    }
+
+    location /chat/ {
+        proxy_pass ${CHAT_URL};
+    }
 }
