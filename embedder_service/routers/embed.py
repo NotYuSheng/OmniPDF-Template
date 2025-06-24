@@ -60,6 +60,25 @@ async def data_chunking(request:DataRequest, chunker) -> List[Dict[str, Any]]:
 
             chunk_end = chunk_start + len(chunk_content)
 
+            # # Find which page this chunk belongs to
+            # page_number = None
+            # for page_info in request.pages_info:
+            #     if (chunk_start >= page_info['char_start'] and
+            #             chunk_start < page_info['char_end']):
+            #         page_number = page_info['page_number']
+            #         break
+
+            # Find page number for the chunk
+            # page_number = None
+            # for page_info in request.pages_info:
+            #     # Ensure keys exist to avoid KeyErrors
+            #     page_start = page_info.get('start_char')
+            #     page_end = page_info.get('end_char')
+            #     if page_start is not None and page_end is not None:
+            #         if page_start <= chunk_start < page_end:
+            #             page_number = page_info.get('page')
+            #             break
+
             # Include doc_id in metadata
             chunk_metadata = chunk.metadata.copy()
             chunk_metadata["doc_id"] = request.doc_id
