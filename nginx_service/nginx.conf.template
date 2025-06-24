@@ -1,0 +1,9 @@
+server { 
+    listen 80;
+    server_name localhost;
+
+    location /processor/ {
+        proxy_pass ${PROCESSOR_URL};
+    }
+
+}

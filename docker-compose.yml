@@ -29,6 +29,15 @@ services:
     depends_on:
       - minio
 
+  nginx_service:
+    build: 
+      context: .
+      dockerfile: ./nginx_service/Dockerfile
+    ports:
+      - "80:80"
+    env_file:
+      - ./nginx_service/.env
+
   redis:
     container_name: redis
     image: redis:7.4.4-alpine
