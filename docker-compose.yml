@@ -39,7 +39,7 @@ services:
     container_name: chromadb
     image: chromadb/chroma
     expose:
-      - "5100"
+      - "5100:8000"
 
   minio:
     image: minio/minio
