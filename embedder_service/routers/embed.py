@@ -75,7 +75,7 @@ async def data_chunking(request:DataRequest, chunker) -> List[Dict[str, Any]]:
             'content': chunk_content.strip(),
             'start_char': chunk_start,
             'end_char': chunk_end,
-            'page_number': None,
+            'page_number': None, # TODO: Implement page number mapping using request.pages_info
             'chunk_index': len(chunk_data),
             # 'metadata': chunk_metadata # {"doc_id": request.doc_id}
             'metadata': {"doc_id": request.doc_id}
