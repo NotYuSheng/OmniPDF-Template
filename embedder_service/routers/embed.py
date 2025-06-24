@@ -83,7 +83,6 @@ async def data_chunking(request:DataRequest, chunker) -> List[Dict[str, Any]]:
 
             current_pos = chunk_end
 
-        logger.info("Chunk data:", chunk_data)
         return chunk_data
     except Exception as e:
         logger.error(f"Semantic chunking failed: {e}")
@@ -233,7 +232,7 @@ async def verify_document_embedding(doc_id: str, collection_name: str = "my_docu
         if chroma_client is None:
             raise HTTPException(status_code=500, detail="ChromaDB client not initialized")
         
-        collection = chroma_client.get_collection(name=collection_name)
+        collection = chroma_client.get_or_create_collection(name=collection_name)
         
         # Query by doc_id in metadata
         results = collection.get(
