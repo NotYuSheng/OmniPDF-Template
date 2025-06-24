@@ -46,12 +46,6 @@ services:
       - pdf_processor_service
       - chat_service
 
-  redis:
-    container_name: redis
-    image: redis:7.4.4-alpine
-    expose:
-      - "6379"
-
   embedder_service:
     build:
       context: .
@@ -61,6 +55,12 @@ services:
       - "8005:8000"
     env_file:
       - ./embedder_service/.env
+
+  redis:
+    container_name: redis
+    image: redis:7.4.4-alpine
+    expose:
+      - "6379"
   
   chromadb:
     container_name: chromadb
