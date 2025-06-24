@@ -28,5 +28,5 @@ class SentenceTransformerEmbeddings(Embeddings):
 def chunker(config: ProcessingConfig):
     """Helper function to get tools based on current request's config"""
     emb_model = SentenceTransformerEmbeddings(config.embedding_model)
-    sem_chunker = SemanticChunker(emb_model, breakpoint_threshold_type="percentile", breakpoint_threshold_amount=90)
+    sem_chunker = SemanticChunker(emb_model, config.breakpoint_threshold_type, config.breakpoint_threshold_amount)
     return sem_chunker
