@@ -6,19 +6,24 @@ import logging
 import uuid
 from models.embed import ProcessingConfig, DataRequest
 from models.chunker_with_embedder import chunker
+# from unstructured.partition.pdf import partition_pdf
+# from unstructured.staging.base import elements_to_json
 # import numpy as np
 
+# from langchain.text_splitter import MarkdownTextSplitter
 from langchain_core.documents import Document
 
 # ChromaDB
 import chromadb
+# from chromadb.utils import embedding_functions
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-# Method 1: Using Sentence Transformer for embedding of chunked data
-chroma_client = chromadb.EphemeralClient() # data stored in memory, not on disk
+# In-memory ChromaDB instance (data stored in memory)
+chroma_client = chromadb.EphemeralClient()
+# Persistent ChromaDB instance (data stored on disk)
 # chroma_client = chromadb.HttpClient(host="localhost", port=5100)
 
 
@@ -38,7 +43,7 @@ async def chunking_and_embedding(request:DataRequest, chunker) -> List[Dict[str,
 
         # Use semantic chunker
         chunks = chunker.split_documents([doc])
-        logger.info("Number of chunks:", len(chunks))
+        logger.info(f"Number of chunks: {len(chunks)}")
 
         chunk_data = []
         current_pos = 0
@@ -58,11 +63,7 @@ async def chunking_and_embedding(request:DataRequest, chunker) -> List[Dict[str,
             # Include doc_id in metadata
             chunk_metadata = chunk.metadata.copy()
             chunk_metadata["doc_id"] = request.doc_id
-            # "metadata": {
-            #     "text_chunk_key": f"text_chunk_{page_number + 1}_{chunk_idx + 1}",
-            #     "type": "text",
-            # },
-
+            
             # Skip chunks that are too small or too large (if necessary)
             # if (len(chunk_content.strip()) < request.config.min_chunk_size) or (len(chunk_content.strip()) > request.config.max_chunk_size):
             #     current_pos = chunk_end
@@ -76,7 +77,8 @@ async def chunking_and_embedding(request:DataRequest, chunker) -> List[Dict[str,
             'end_char': chunk_end,
             'page_number': None,
             'chunk_index': len(chunk_data),
-            'metadata': chunk_metadata # {"doc_id": request.doc_id}
+            # 'metadata': chunk_metadata # {"doc_id": request.doc_id}
+            'metadata': {"doc_id": request.doc_id}
             })
 
             current_pos = chunk_end
