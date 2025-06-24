@@ -36,8 +36,8 @@ services:
       - ./embedder_service/.env
   
   chromadb:
-    container_name: 
-    image: 
+    container_name: chromadb
+    image: chromadb/chroma
     expose:
       - "5100"
 
