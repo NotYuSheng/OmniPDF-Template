@@ -195,17 +195,17 @@ async def pdf_embedder_service(request: DataRequest):
     
     try:
         # Extracted data has to be chunked up first before being embedded and stored into ChromaDB
-        chunk_embeddings = await data_chunking(request, semantic_chunker)
+        chunk_data = await data_chunking(request, semantic_chunker)
 
-        if not chunk_embeddings:
+        if not chunk_data:
             raise HTTPException(status_code=400, detail="No chunks were created from the input text") 
         
-        embed_results = await vectorize_chromadb(chunk_embeddings, request.config)
+        embed_results = await vectorize_chromadb(chunk_data, request.config)
         
         return {
                 "status": "success",
                 "doc_id": request.doc_id,
-                "chunks_created": len(chunk_embeddings),
+                "chunks_created": len(chunk_data),
                 "embedding_results": embed_results,
                 "chunk_details": [
                     {
@@ -215,7 +215,7 @@ async def pdf_embedder_service(request: DataRequest):
                         "start_char": chunk["start_char"],
                         "end_char": chunk["end_char"]
                     }
-                    for chunk in chunk_embeddings
+                    for chunk in chunk_data
                 ]
             }
     except Exception as e:
