@@ -1,11 +1,13 @@
 from typing import List
 from models.embed import ProcessingConfig
+from functools import lru_cache
 
 # Langchain components
 from langchain_core.embeddings import Embeddings
 from langchain_experimental.text_splitter import SemanticChunker
 # Sentence transformers
 from sentence_transformers import SentenceTransformer
+from chromadb.utils.embedding_functions.sentence_transformer_embedding_function import SentenceTransformerEmbeddingFunction
 
 # Custom Embeddings class for Sentence Transformers
 class SentenceTransformerEmbeddings(Embeddings):
@@ -24,14 +26,23 @@ class SentenceTransformerEmbeddings(Embeddings):
         embedding = self.model.encode([text], convert_to_tensor=False)
         return embedding[0].tolist()
     
+    # def name(self) -> str:
+    #     return "sentence_transformer"
 
-def chunker(config: ProcessingConfig):
+
+@lru_cache(maxsize=5)
+def get_embedding_model(model_name: str):
+    """Get a cached SentenceTransformerEmbeddings model."""
+    return SentenceTransformerEmbeddingFunction(model_name)
+
+
+def get_chunking_model(config: ProcessingConfig):
     """Helper function to get tools based on current request's config"""
-    emb_model = SentenceTransformerEmbeddings(config.embedding_model)
+    # emb_model = get_embedding_model(config.embedding_model)
     sem_chunker = SemanticChunker(
-        emb_model, 
+        SentenceTransformerEmbeddings(config.embedding_model),
         breakpoint_threshold_type=config.breakpoint_threshold_type, 
         breakpoint_threshold_amount=config.breakpoint_threshold_amount
     )
-    
+
     return sem_chunker
