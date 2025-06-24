@@ -38,6 +38,8 @@ services:
       - "8005:8000"
     env_file:
       - ./embedder_service/.env
+    depends_on:
+      - chromadb
   
   redis:
     container_name: redis
