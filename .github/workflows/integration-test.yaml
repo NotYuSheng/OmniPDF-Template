@@ -1,0 +1,66 @@
+name: Integration Test
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - dev
+
+jobs:
+  cypress-run:
+    name: Run Cypress Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Maximize build space
+        uses: AdityaGarg8/remove-unwanted-software@v4.1
+        with:
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Build and run Compose Stack
+        run: |
+          docker compose \
+            --file docker-compose.yml \
+            up --detach --build
+
+      - name: Delete Docker build cache
+        run: |
+          docker builder prune --all --force
+
+      - name: Wait for all *_service containers to be healthy
+        run: |
+          echo "Detecting *_service containers..."
+          mapfile -t SERVICE_PORTS < <(
+            docker compose ps --format json | \
+            jq -r '.[] | select(.Name | endswith("_service")) | select(.Publishers | length > 0) | "\(.Name):\(.Publishers[0].PublishedPort)"'
+          )
+
+          for ITEM in "${SERVICE_PORTS[@]}"; do
+            NAME=$(echo "$ITEM" | cut -d':' -f1)
+            PORT=$(echo "$ITEM" | cut -d':' -f2)
+            echo "Waiting for $NAME on port $PORT..."
+
+            for i in {1..30}; do
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/health")
+              if [ "$STATUS" == "200" ]; then
+                echo "$NAME is healthy"
+                break
+              fi
+              echo "Still waiting for $NAME (HTTP $STATUS)..."
+              sleep 3
+            done
+          done
+
+      - name: Run Cypress tests
+        uses: cypress-io/github-action@v6
+        with:
+          start: echo "All services are up"
+          wait-on: http://localhost:8501
+          wait-on-timeout: 120
