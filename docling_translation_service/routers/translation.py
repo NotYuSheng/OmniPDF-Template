@@ -8,7 +8,8 @@ import requests
 router = APIRouter(prefix="/translation", tags=["translation"])
 logger = logging.getLogger(__name__)
 
-LLM_URL = "http://192.168.1.108:80/v1/chat/completions"
+# LLM_URL = "http://192.168.1.108:80/v1/chat/completions"
+LLM_URL = "http://192.168.1.197:80/v1/chat/completions"
 TOKEN = "token-abc123"
 
 def translate(prompt, input_lang=None, output_lang="English"):
@@ -47,19 +48,24 @@ def doc_translate(
     data: DoclingTranslationResponse = Body(...),
     input_lang: Optional[str] = Query(None),
     output_lang: str = Query("English")
-    ):
-
-    for entry in data["texts"]:
+):
+    for entry in data.texts:
         original_text = entry.get("text") or entry.get("orig")
         if original_text:
             translated_text = translate(original_text, input_lang=input_lang, output_lang=output_lang)
             entry["trans"] = translated_text
 
-    for table in data["tables"]:
-        for entry in table["data"]["table_cells"]:
+    for table in data.tables:
+        table_data = table.get("data", {})
+        table_cells = table_data.get("table_cells", [])
+        for entry in table_cells:
             original_text = entry.get("text")
             if original_text:
                 translated_text = translate(original_text, input_lang=input_lang, output_lang=output_lang)
                 entry["trans"] = translated_text
 
-    return data
+    return TranslateResponse(
+        doc_id=data.name,
+        status="success",
+        result=data
+    )
