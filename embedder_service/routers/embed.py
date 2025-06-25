@@ -52,7 +52,7 @@ async def data_chunking(request:DataRequest, chunker) -> List[Dict[str, Any]]:
             # First iteration: Extract first chunk of doc.page_content
             chunk_content = chunk.page_content
             logger.info(f"Length of chunk {i+1}: {len(chunk_content.strip())}")
-            # First iteration: Start from first chunk of doc.page_context
+
             chunk_start = request.text.find(chunk_content, current_pos)
 
             if chunk_start == -1:
@@ -105,7 +105,7 @@ async def data_chunking(request:DataRequest, chunker) -> List[Dict[str, Any]]:
         return chunk_data
     except Exception as e:
         logger.error(f"Semantic chunking failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Data chunking failed.")
 
 
 async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: ProcessingConfig, emb_model):
@@ -120,15 +120,7 @@ async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: Processin
             logger.info(f"Using existing collection: {config.collection_name}")
         except Exception as e:
             logger.error(f"Collection retrieval failed: {e}")
-            raise HTTPException(status_code=500, detail=f"Collection retrieval failed: {str(e)}")
-        
-        # for chunk in chunk_data:
-        #     collection.add(
-        #         ids=[chunk['chunk_id']],
-        #         documents=[chunk["content"]],
-        #         metadatas=[chunk["metadata"]]
-        #     )
-        #     logger.info(f"Added chunk {chunk['chunk_id']} to collection")
+            raise HTTPException(status_code=500, detail="Collection retrieval failed.")
 
         ids = [chunk['chunk_id'] for chunk in chunk_data]
         documents = [chunk['content'] for chunk in chunk_data]
@@ -167,7 +159,7 @@ async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: Processin
 
     except Exception as e:
         logger.error(f"Embedding process failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Embedding failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Embedding failed")
 
 
 # def serialize_chroma_results(results: Dict[str, Any]) -> Dict[str, Any]:
@@ -239,7 +231,7 @@ async def pdf_embedder_service(request: DataRequest):
             }
     except Exception as e:
         logger.error(f"PDF embedder service failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Service failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="PDF embedder service failed")
     
 
 @router.get("/status/{doc_id}")
@@ -277,4 +269,4 @@ async def verify_document_embedding(doc_id: str, collection_name: str = "my_docu
         
     except Exception as e:
         logger.error(f"Document verification failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Verification failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Document verification failed")
