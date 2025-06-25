@@ -86,22 +86,22 @@ services:
     runtime: nvidia
     ipc: host
     volumes:
-      # - ./models/Qwen2.5-14B-Instruct:/mnt/model/
-      - ./models/Qwen2.5-0.5B-Instruct:/mnt/model/
+      - ./llm_models/Qwen2.5-14B-Instruct:/mnt/model/
+      # - ./llm_models/Qwen2.5-0.5B-Instruct:/mnt/model/
     ports:
       - "80:8000"
     environment:
-      # - NVIDIA_VISIBLE_DEVICES=0,1,2,3
-      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_VISIBLE_DEVICES=0,1,2,3
+      # - NVIDIA_VISIBLE_DEVICES=0
       - HF_HUB_OFFLINE=1
     command: [
       "--model", "/mnt/model/",
       "--served-model-name","qwen2.5",
       "--max-model-len", "4096",
-      # "--tensor-parallel-size", "4",
-      "--tensor-parallel-size", "1",
-      # "--gpu-memory-utilization", "0.8",
-      "--gpu-memory-utilization", "0.5",
+      "--tensor-parallel-size", "4",
+      # "--tensor-parallel-size", "1",
+      "--gpu-memory-utilization", "0.8",
+      # "--gpu-memory-utilization", "0.5",
       "--enable-auto-tool-choice",
       "--tool-call-parser", "hermes"
     ]

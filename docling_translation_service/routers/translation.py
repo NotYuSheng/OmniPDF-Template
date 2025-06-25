@@ -5,23 +5,23 @@ from typing import Optional
 import logging
 import requests
 
-router = APIRouter(prefix="/translation", tags=["translation"])
+router = APIRouter(prefix="/translate", tags=["translate"])
 logger = logging.getLogger(__name__)
 
-# LLM_URL = "http://192.168.1.108:80/v1/chat/completions"
-LLM_URL = "http://192.168.1.197:80/v1/chat/completions"
+LLM_URL = "http://192.168.1.108:80/v1/chat/completions"
+# LLM_URL = "http://192.168.1.197:80/v1/chat/completions"
 TOKEN = "token-abc123"
 
-def translate(prompt, input_lang=None, output_lang="English"):
-    if input_lang:
+def translate(prompt, source_lang=None, target_lang="English"):
+    if source_lang:
         system_prompt = (
-            f"You are a professional translator. Given the input language '{input_lang}', "
-            f"think deeply and translate the following to '{output_lang}'. "
+            f"You are a professional translator. Given the input language '{source_lang}', "
+            f"think deeply and translate the following to '{target_lang}'. "
             f"Return only the translated text."
         )
     else:
         system_prompt = (
-            f"You are a professional translator. Think deeply and translate the following to '{output_lang}'. "
+            f"You are a professional translator. Think deeply and translate the following to '{target_lang}'. "
             f"Detect the source language automatically and return only the translated text."
         )
 
@@ -43,29 +43,43 @@ def translate(prompt, input_lang=None, output_lang="English"):
 
     return r.json()["choices"][0]["message"]["content"]
 
-@router.post("/extract", response_model=TranslateResponse)
-def doc_translate(
-    data: DoclingTranslationResponse = Body(...),
-    input_lang: Optional[str] = Query(None),
-    output_lang: str = Query("English")
-):
-    for entry in data.texts:
+@router.post("/translate", response_model=TranslateResponse)
+def doc_translate(payload: TranslateResponse = Body(...)):
+    doc_id = payload.doc_id
+    source_lang = payload.source_lang
+    target_lang = payload.target_lang or "English"
+    data = payload.message 
+
+    for i, entry in enumerate(data.texts):
         original_text = entry.get("text") or entry.get("orig")
         if original_text:
-            translated_text = translate(original_text, input_lang=input_lang, output_lang=output_lang)
-            entry["trans"] = translated_text
+            translated_text = translate(original_text, source_lang=source_lang, target_lang=target_lang)
+            entry_dict = dict(entry) if not isinstance(entry, dict) else entry
+            entry_dict["trans"] = translated_text
+            data.texts[i] = entry_dict  # update the list
+
 
     for table in data.tables:
         table_data = table.get("data", {})
         table_cells = table_data.get("table_cells", [])
-        for entry in table_cells:
+        for i, entry in enumerate(table_cells):
             original_text = entry.get("text")
             if original_text:
-                translated_text = translate(original_text, input_lang=input_lang, output_lang=output_lang)
-                entry["trans"] = translated_text
+                translated_text = translate(original_text, source_lang=source_lang, target_lang=target_lang)
+                entry_dict = dict(entry) if not isinstance(entry, dict) else entry
+                entry_dict["trans"] = translated_text
+                table_cells[i] = entry_dict
 
-    return TranslateResponse(
-        doc_id=data.name,
-        status="success",
-        result=data
-    )
+    if source_lang:
+        return TranslateResponse(
+            doc_id = doc_id,
+            source_lang = source_lang,
+            target_lang = target_lang,
+            message = data
+        )
+    else:
+        return TranslateResponse(
+            doc_id = doc_id,
+            target_lang = target_lang,
+            message = data
+        )
