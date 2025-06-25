@@ -24,6 +24,14 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Copy example.env to .env
+        run: |
+          echo "Copying example.env to .env..."
+          find . -name "example.env" | while read f; do
+            cp "$f" "$(dirname "$f")/.env"
+            echo "✓ Created $(dirname "$f")/.env"
+          done
+
       - name: Build and run Compose Stack
         run: |
           docker compose \
