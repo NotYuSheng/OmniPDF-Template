@@ -9,17 +9,14 @@ server {
     proxy_set_header Host $host;
 
     location /processor/ {
-        rewrite ^/processor/(.*)$ /$1 break;
-        proxy_pass ${PDF_PROCESSOR_URL};
+        proxy_pass ${PDF_PROCESSOR_URL}/;
     }
 
     location /extractor/ {
-        rewrite ^/extractor/(.*)$ /$1 break;
-        proxy_pass ${PDF_EXTRACTOR_URL};
+        proxy_pass ${PDF_EXTRACTOR_URL}/;
     }
 
     location /chat/ {
-        rewrite ^/chat/(.*)$ /$1 break;
-        proxy_pass ${CHAT_URL};
+        proxy_pass ${CHAT_URL}/;
     }
 }
