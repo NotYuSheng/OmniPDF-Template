@@ -4,8 +4,6 @@ services:
       context: .
       dockerfile: ./pdf_processor_service/Dockerfile
     container_name: pdf_processor_service
-    ports:
-      - "8000:8000"
     env_file:
       - ./pdf_processor_service/.env
 
@@ -14,8 +12,6 @@ services:
       context: .
       dockerfile: ./chat_service/Dockerfile
     container_name: chat_service
-    ports:
-      - "8001:8000"
     env_file:
       - ./chat_service/.env
 
@@ -24,8 +20,6 @@ services:
       context: .
       dockerfile: ./pdf_extraction_service/Dockerfile
     container_name: pdf_extraction_service
-    ports:
-      - "8002:8000"
     depends_on:
       - minio
 
