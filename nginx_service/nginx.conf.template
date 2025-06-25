@@ -2,30 +2,24 @@ server {
     listen 80;
     server_name localhost;
 
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-NginX-Proxy true;
+    proxy_set_header Host $host;
+
     location /processor/ {
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-NginX-Proxy true;
-        proxy_set_header Host $host;
+        rewrite ^/processor/(.*)$ /$1 break;
         proxy_pass ${PDF_PROCESSOR_URL};
     }
 
     location /extractor/ {
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-NginX-Proxy true;
-        proxy_set_header Host $host;
+        rewrite ^/extractor/(.*)$ /$1 break;
         proxy_pass ${PDF_EXTRACTOR_URL};
     }
 
     location /chat/ {
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-NginX-Proxy true;
-        proxy_set_header Host $host;
+        rewrite ^/chat/(.*)$ /$1 break;
         proxy_pass ${CHAT_URL};
     }
 }
