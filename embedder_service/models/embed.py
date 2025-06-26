@@ -16,7 +16,6 @@ class ProcessingConfig(BaseModel):
         default=512, description="Target chunk size in characters")
     overlap: int = Field(
         default=50, description="Overlap between chunks in characters")
-    # Default embedding model provided by Sentence Transformers
     embedding_model: str = Field(
         default=EMBEDDING_MODEL_NAME, description="Sentence Transformer model")
     breakpoint_threshold_type: BreakpointThresholdType = Field(

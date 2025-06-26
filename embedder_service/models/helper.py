@@ -25,9 +25,6 @@ class SentenceTransformerEmbeddings(Embeddings):
         """Embed a single query"""
         embedding = self.model.encode([text], convert_to_tensor=False)
         return embedding[0].tolist()
-    
-    # def name(self) -> str:
-    #     return "sentence_transformer"
 
 
 @lru_cache(maxsize=5)
