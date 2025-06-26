@@ -33,20 +33,6 @@ services:
     env_file:
       - ./docling_translation_service/.env
 
-  nginx_service:
-    container_name: nginx_service
-    build: 
-      context: .
-      dockerfile: ./nginx_service/Dockerfile
-    ports:
-      - "80:8080"
-    env_file:
-      - ./nginx_service/.env
-    depends_on:
-      - pdf_extraction_service
-      - pdf_processor_service
-      - chat_service
-
   embedder_service:
     build:
       context: .
@@ -58,7 +44,21 @@ services:
       - ./embedder_service/.env
     depends_on:
       - chromadb
-  
+
+  nginx:
+    container_name: nginx
+    build: 
+      context: .
+      dockerfile: ./nginx/Dockerfile
+    ports:
+      - "80:8080"
+    env_file:
+      - ./nginx/.env
+    depends_on:
+      - pdf_extraction_service
+      - pdf_processor_service
+      - chat_service
+
   redis:
     container_name: redis
     image: redis:7.4.4-alpine
