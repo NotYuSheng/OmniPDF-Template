@@ -34,6 +34,7 @@ services:
       - ./docling_translation_service/.env
 
   nginx_service:
+    container_name: nginx_service
     build: 
       context: .
       dockerfile: ./nginx_service/Dockerfile
