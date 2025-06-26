@@ -8,7 +8,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 
-app = FastAPI()
+app = FastAPI(root_path="/pdf_extraction")
 
 app.include_router(health.router)
 app.include_router(extractor.router)
