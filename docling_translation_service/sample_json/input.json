@@ -1,8 +1,6 @@
 {    
     "doc_id": "",
-    "source_lang": "en",
-    "target_lang": "malay",
-    "message": {
+    "docling": {
         "schema_name": "DoclingDocument",
         "version": "1.4.0",
         "name": "sample-tables",
@@ -33518,5 +33516,7 @@
                 "page_no": 11
             }
         }
-    }
+    },
+    "source_lang": "en",
+    "target_lang": "malay"
 }

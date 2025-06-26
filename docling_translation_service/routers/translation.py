@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Query, Body
+from fastapi import APIRouter, Body
 from models.translate import TranslateResponse, DoclingTranslationResponse
-from typing import Optional
+# from typing import Optional
 
 import logging
 import requests
@@ -8,8 +8,8 @@ import requests
 router = APIRouter(prefix="/translate", tags=["translate"])
 logger = logging.getLogger(__name__)
 
-LLM_URL = "http://192.168.1.108:80/v1/chat/completions"
-# LLM_URL = "http://192.168.1.197:80/v1/chat/completions"
+# LLM_URL = "http://192.168.1.108:80/v1/chat/completions"
+LLM_URL = "http://192.168.1.224:80/v1/chat/completions"
 TOKEN = "token-abc123"
 
 def translate(prompt, source_lang=None, target_lang="English"):
@@ -46,9 +46,9 @@ def translate(prompt, source_lang=None, target_lang="English"):
 @router.post("/translate", response_model=TranslateResponse)
 def doc_translate(payload: TranslateResponse = Body(...)):
     doc_id = payload.doc_id
+    data = payload.docling
     source_lang = payload.source_lang
     target_lang = payload.target_lang or "English"
-    data = payload.message 
 
     for i, entry in enumerate(data.texts):
         original_text = entry.get("text") or entry.get("orig")
@@ -75,11 +75,11 @@ def doc_translate(payload: TranslateResponse = Body(...)):
             doc_id = doc_id,
             source_lang = source_lang,
             target_lang = target_lang,
-            message = data
+            docling = data
         )
     else:
         return TranslateResponse(
             doc_id = doc_id,
             target_lang = target_lang,
-            message = data
+            docling = data
         )
