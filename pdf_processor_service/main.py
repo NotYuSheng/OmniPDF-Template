@@ -9,7 +9,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 
-app = FastAPI()
+app = FastAPI(root_path="/pdf_processor")
 
 app.include_router(health.router)
 app.include_router(document.router)
