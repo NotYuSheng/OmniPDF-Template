@@ -8,11 +8,11 @@ server {
     proxy_set_header X-NginX-Proxy true;
     proxy_set_header Host $host;
 
-    location /processor/ {
+    location /pdf_processor/ {
         proxy_pass ${PDF_PROCESSOR_URL}/;
     }
 
-    location /extractor/ {
+    location /pdf_extraction/ {
         proxy_pass ${PDF_EXTRACTOR_URL}/;
     }
 
