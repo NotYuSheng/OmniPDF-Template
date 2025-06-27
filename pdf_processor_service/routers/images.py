@@ -6,11 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from models.images import ImageResponse
 from utils.asynchttp import proxy_get, proxy_post
 from shared_utils.s3_utils import generate_presigned_url
-from shared_utils.redis import (
-    get_service_cache,
-    validate_session_doc_pair,
-    ServiceCache,
-)
+from utils.session import validate_session_doc_pair
+from shared_utils.redis import get_service_cache, ServiceCache
+
 
 router = APIRouter(prefix="/images", tags=["images"])
 logger = logging.getLogger(__name__)
