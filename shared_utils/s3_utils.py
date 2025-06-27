@@ -80,16 +80,19 @@ def delete_file(key: str) -> bool:
         logger.exception(f"Failed to delete file from S3: {e}")
         return False
     
-def save_job(doc_id: str, job_data: Union[dict, BaseModel]) -> bool:
+def save_job(doc_id: str, job_data: Union[dict, BaseModel], status: str, job_type: str) -> bool:
     """
-    Saves job data to S3 under a key based on the doc_id.
+    Saves job data with metadata to S3 under a key based on the doc_id.
     """
     try:
-        if isinstance(job_data, BaseModel):
-            payload = job_data.model_dump()
-        else:
-            payload = job_data
-        file_obj = BytesIO(json.dumps(payload).encode("utf-8"))
+        payload = job_data.model_dump() if isinstance(job_data, BaseModel) else job_data or {}
+        wrapped = {
+            "doc_id": doc_id,
+            "status": status,
+            "type": job_type,
+            "data": payload
+        }
+        file_obj = BytesIO(json.dumps(wrapped).encode("utf-8"))
         return upload_fileobj(file_obj, key=f"jobs/{doc_id}.json", content_type="application/json")
     except Exception as e:
         logger.exception(f"Failed to save job for doc_id: {doc_id} - {e}")
@@ -97,11 +100,17 @@ def save_job(doc_id: str, job_data: Union[dict, BaseModel]) -> bool:
 
 def load_job(doc_id: str) -> Optional[dict]:
     """
-    Loads job data from S3 given a doc_id.
+    Loads job metadata and data from S3 given a doc_id.
     """
     try:
         response = s3_client.get_object(Bucket=S3_BUCKET, Key=f"jobs/{doc_id}.json")
-        return json.loads(response["Body"].read().decode("utf-8"))
+        job = json.loads(response["Body"].read().decode("utf-8"))
+        return {
+            "doc_id": doc_id,
+            "status": job.get("status", "unknown"),
+            "type": job.get("type", "unknown"),
+            "data": job.get("data", None)
+        }
     except (ClientError, BotoCoreError, json.JSONDecodeError) as e:
         logger.exception(f"Failed to load job for doc_id: {doc_id} - {e}")
         return None
