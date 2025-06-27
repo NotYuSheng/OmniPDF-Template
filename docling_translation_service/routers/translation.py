@@ -91,7 +91,7 @@ def doc_translate(payload: TranslateResponse = Body(...)):
 
 @router.get("/status/{doc_id}")
 def get_status(doc_id: str):
-    job = load_job(doc_id)
+    job = load_job(doc_id = doc_id, job_type="translation")
     if job is None:
         return JSONResponse(content="failed", status_code=404)
 

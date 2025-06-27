@@ -93,17 +93,18 @@ def save_job(doc_id: str, job_data: Union[dict, BaseModel], status: str, job_typ
             "data": payload
         }
         file_obj = BytesIO(json.dumps(wrapped).encode("utf-8"))
-        return upload_fileobj(file_obj, key=f"jobs/{doc_id}.json", content_type="application/json")
+        return upload_fileobj(file_obj, key=f"jobs/{job_type}/{doc_id}.json", content_type="application/json")
     except Exception as e:
         logger.exception(f"Failed to save job for doc_id: {doc_id} - {e}")
         return False
 
-def load_job(doc_id: str) -> Optional[dict]:
+def load_job(doc_id: str, job_type: str) -> Optional[dict]:
     """
     Loads job metadata and data from S3 given a doc_id.
     """
     try:
-        response = s3_client.get_object(Bucket=S3_BUCKET, Key=f"jobs/{doc_id}.json")
+        key = f"jobs/{job_type}/{doc_id}.json"
+        response = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
         job = json.loads(response["Body"].read().decode("utf-8"))
         return {
             "doc_id": doc_id,
