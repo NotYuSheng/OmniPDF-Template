@@ -2,7 +2,6 @@ from fastapi import APIRouter, Body
 from fastapi.responses import JSONResponse
 from models.translate import TranslateResponse
 from shared_utils.s3_utils import save_job, load_job
-# from typing import Optional
 
 import logging
 import requests
