@@ -72,14 +72,18 @@ def submit_pdf(doc_id: str, download_url: str, background_tasks: BackgroundTasks
 
 @router.get("/{doc_id}", response_model=ExtractResponse)
 def get_status(doc_id: str):
-    job = load_job(doc_id = doc_id, job_type = "extraction")
+    job = load_job(doc_id=doc_id, job_type="extraction")
     if not job:
         raise HTTPException(status_code=404, detail="Document ID not found")
 
     if job.get("status") == "error":
         raise HTTPException(status_code=500, detail=job.get("message", "Processing failed"))
 
-    if job.get("status") == "processing":
-        return JSONResponse(status_code=204, content=job)
+    job_data = job.get("data", {})
+    result = job_data.get("result", None)
 
-    return ExtractResponse(**job)
+    return ExtractResponse(
+        doc_id=doc_id,
+        status=job.get("status", "unknown"),
+        result=result
+    )

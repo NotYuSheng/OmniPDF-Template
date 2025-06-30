@@ -7,11 +7,10 @@ from shared_utils.s3_utils import save_job, load_job
 import logging
 import requests
 
-router = APIRouter(prefix="/translate", tags=["translate"])
+router = APIRouter(prefix="/translation", tags=["translation"])
 logger = logging.getLogger(__name__)
 
-LLM_URL = "http://192.168.1.108:80/v1/chat/completions"
-# LLM_URL = "http://192.168.1.224:80/v1/chat/completions"
+LLM_URL = "http://qwen2.5:8000/v1/chat/completions"
 TOKEN = "token-abc123"
 
 def translate(prompt, source_lang=None, target_lang="English"):
@@ -45,7 +44,7 @@ def translate(prompt, source_lang=None, target_lang="English"):
 
     return r.json()["choices"][0]["message"]["content"]
 
-@router.post("/translate", response_model=TranslateResponse)
+@router.post("/", response_model=TranslateResponse)
 def doc_translate(payload: TranslateResponse = Body(...)):
     doc_id = payload.doc_id
     data = payload.docling

@@ -9,7 +9,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 
-app = FastAPI()
+app = FastAPI(root_path="/docling_translation")
 
 app.include_router(health.router)
 app.include_router(translation.router)
