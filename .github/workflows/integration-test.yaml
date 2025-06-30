@@ -24,14 +24,6 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Copy example.env to .env
-        run: |
-          echo "Copying example.env to .env..."
-          find . -name "example.env" | while read f; do
-            cp "$f" "$(dirname "$f")/.env"
-            echo "✓ Created $(dirname "$f")/.env"
-          done
-
       - name: Build and run Compose Stack
         run: |
           docker compose \
@@ -50,6 +42,11 @@ jobs:
             jq -r '.[] | select(.Name | endswith("_service")) | select(.Publishers | length > 0) | "\(.Name):\(.Publishers[0].PublishedPort)"'
           )
 
+          if [ "${#SERVICE_PORTS[@]}" -eq 0 ]; then
+            echo "No *_service containers with published ports found. Exiting."
+            exit 1
+          fi
+
           for ITEM in "${SERVICE_PORTS[@]}"; do
             NAME=$(echo "$ITEM" | cut -d':' -f1)
             PORT=$(echo "$ITEM" | cut -d':' -f2)
@@ -63,12 +60,39 @@ jobs:
               fi
               echo "Still waiting for $NAME (HTTP $STATUS)..."
               sleep 3
+              if [ "$i" -eq 30 ]; then
+                echo "$NAME failed to become healthy. Exiting."
+                exit 1
+              fi
             done
           done
 
-      - name: Run Cypress tests
-        uses: cypress-io/github-action@v6
+      # - name: Wait for Streamlit frontend to be available
+      #   run: |
+      #     for i in {1..30}; do
+      #       STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8501)
+      #       if [ "$STATUS" == "200" ]; then
+      #         echo "Frontend is ready"
+      #         break
+      #       fi
+      #       echo "Waiting for frontend on :8501 (HTTP $STATUS)..."
+      #       sleep 3
+      #       if [ "$i" -eq 30 ]; then
+      #         echo "Frontend did not become ready. Exiting."
+      #         exit 1
+      #       fi
+      #     done
+
+      - name: Set up Node.js for Cypress
+        uses: actions/setup-node@v4
         with:
-          start: echo "All services are up"
-          wait-on: http://localhost:8501
-          wait-on-timeout: 120
+          node-version: 20
+
+      - name: Install Cypress
+        run: |
+          npm init -y
+          npm install cypress --save-dev
+
+      - name: Run Cypress tests
+        run: |
+          npx cypress run
