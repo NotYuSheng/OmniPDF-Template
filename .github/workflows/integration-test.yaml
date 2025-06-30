@@ -42,28 +42,22 @@ jobs:
         run: |
           docker builder prune --all --force
 
-      - name: Wait for all *_service containers to be healthy
+      - name: Wait for all *_service containers (via Nginx)
         run: |
           echo "Detecting *_service containers..."
-          SERVICE_LINES=$(docker compose ps | grep '_service')
+          SERVICE_NAMES=$(docker compose ps --services | grep '_service')
       
-          if [ -z "$SERVICE_LINES" ]; then
-            echo "No *_service containers found. Exiting."
+          if [ -z "$SERVICE_NAMES" ]; then
+            echo "No *_service services found. Exiting."
             exit 1
           fi
       
-          while read -r line; do
-            NAME=$(echo "$line" | awk '{print $1}')
-            PORT=$(echo "$line" | grep -oP '0\.0\.0\.0:\K[0-9]+(?=->)' | head -n 1)
+          for NAME in $SERVICE_NAMES; do
+            PREFIX=${NAME%_service}
+            echo "Waiting for $NAME via http://localhost/$PREFIX/health..."
       
-            if [ -z "$PORT" ]; then
-              echo "Skipping $NAME (no published port)"
-              continue
-            fi
-      
-            echo "Waiting for $NAME on port $PORT..."
             for i in {1..30}; do
-              STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/health")
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost/$PREFIX/health")
               if [ "$STATUS" == "200" ]; then
                 echo "$NAME is healthy"
                 break
@@ -75,7 +69,7 @@ jobs:
                 exit 1
               fi
             done
-          done <<< "$SERVICE_LINES"
+          done
 
       # - name: Wait for Streamlit frontend to be available
       #   run: |
