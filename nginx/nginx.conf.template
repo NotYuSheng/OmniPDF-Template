@@ -19,4 +19,8 @@ server {
     location /chat/ {
         proxy_pass ${CHAT_URL}/;
     }
+
+    location /embedder/ {
+        proxy_pass ${EMBEDDER_URL}/;
+    }
 }
