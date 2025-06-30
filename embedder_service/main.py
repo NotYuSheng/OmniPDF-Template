@@ -9,10 +9,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 
-app = FastAPI()
+app = FastAPI(root_path="/embedder")
 
-# /Health endpoint
 app.include_router(health.router)
-# /Embed endpoint
-# /Status/{doc_id} endpoint
 app.include_router(embed.router)
