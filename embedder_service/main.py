@@ -1,6 +1,7 @@
 from fastapi import FastAPI
-from routers import health, extractor
+from routers import health, embed
 import logging
+
 
 # Set up logger
 logging.basicConfig(
@@ -8,7 +9,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 
-app = FastAPI(root_path="/pdf_extraction")
+app = FastAPI(root_path="/embedder")
 
 app.include_router(health.router)
-app.include_router(extractor.router)
+app.include_router(embed.router)
