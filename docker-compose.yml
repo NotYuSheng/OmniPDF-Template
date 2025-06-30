@@ -23,18 +23,6 @@ services:
     depends_on:
       - minio
 
-  embedder_service:
-    build:
-      context: .
-      dockerfile: ./embedder_service/Dockerfile
-    container_name: embedder_service
-    ports:
-      - "8005:8000"
-    env_file:
-      - ./embedder_service/.env
-    depends_on:
-      - chromadb
-
   nginx:
     container_name: nginx
     build: 
