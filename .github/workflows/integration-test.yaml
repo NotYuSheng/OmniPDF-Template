@@ -45,21 +45,23 @@ jobs:
       - name: Wait for all *_service containers to be healthy
         run: |
           echo "Detecting *_service containers..."
-          mapfile -t SERVICE_PORTS < <(
-            docker compose ps --format json | \
-            jq -r '.[] | select(.Name | endswith("_service")) | select(.Publishers | length > 0) | "\(.Name):\(.Publishers[0].PublishedPort)"'
-          )
-
-          if [ "${#SERVICE_PORTS[@]}" -eq 0 ]; then
-            echo "No *_service containers with published ports found. Exiting."
+          SERVICE_LINES=$(docker compose ps | grep '_service')
+      
+          if [ -z "$SERVICE_LINES" ]; then
+            echo "No *_service containers found. Exiting."
             exit 1
           fi
-
-          for ITEM in "${SERVICE_PORTS[@]}"; do
-            NAME=$(echo "$ITEM" | cut -d':' -f1)
-            PORT=$(echo "$ITEM" | cut -d':' -f2)
+      
+          while read -r line; do
+            NAME=$(echo "$line" | awk '{print $1}')
+            PORT=$(echo "$line" | grep -oP '0\.0\.0\.0:\K[0-9]+(?=->)' | head -n 1)
+      
+            if [ -z "$PORT" ]; then
+              echo "Skipping $NAME (no published port)"
+              continue
+            fi
+      
             echo "Waiting for $NAME on port $PORT..."
-
             for i in {1..30}; do
               STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/health")
               if [ "$STATUS" == "200" ]; then
@@ -73,7 +75,7 @@ jobs:
                 exit 1
               fi
             done
-          done
+          done <<< "$SERVICE_LINES"
 
       # - name: Wait for Streamlit frontend to be available
       #   run: |
