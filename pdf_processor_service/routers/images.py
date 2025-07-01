@@ -7,7 +7,7 @@ from models.images import ImageResponse
 from utils.asynchttp import proxy_get, proxy_post
 from shared_utils.s3_utils import generate_presigned_url
 from utils.session import validate_session_doc_pair
-from shared_utils.redis import get_service_cache, ServiceCache
+from shared_utils.redis import get_set_storage, RedisSetStorage
 
 
 router = APIRouter(prefix="/images", tags=["images"])
@@ -22,7 +22,7 @@ async def get_pdf_images(
     doc_id: str,
     response: Response,
     valid_request: bool = Depends(validate_session_doc_pair),
-    service_cache: ServiceCache = Depends(get_service_cache),
+    service_cache: RedisSetStorage = Depends(get_set_storage),
 ):
     if not valid_request:
         raise HTTPException(
@@ -39,7 +39,7 @@ async def get_pdf_images(
     else:
         req = await proxy_get(f"{IMAGE_PROCESSOR_URL}/{doc_id}")
     if req.status_code == 202 and not doc_is_processing:
-        service_cache.add(__name__, doc_id)
+        service_cache.append(__name__, doc_id)
     elif req.status_code == 200 and doc_is_processing:
         service_cache.remove(__name__, doc_id)
     response.status_code = req.status_code

@@ -24,10 +24,32 @@ class Config(BaseSettings):
 config = Config()
 
 
-# Stores the data as string using json
-class RedisJSONStorage:
+# Stores the data as string
+class RedisStringStorage:
     def __init__(self):
         self.client = Redis.from_url(config.redis_url)
+
+    def __getitem__(self, key: str):
+        return self.client.get(key)
+
+    def __setitem__(self, key: str, value: str):
+        self.client.set(
+            key,
+            value,
+            ex=config.expire_time,
+        )
+
+    def __delitem__(self, key: str):
+        self.client.delete(key)
+
+    def __contains__(self, key: str):
+        return self.client.exists(key)
+
+
+# Stores the data as string using json
+class RedisJSONStorage(RedisStringStorage):
+    def __init__(self):
+        super().__init__()
 
     def __getitem__(self, key: str):
         raw = self.client.get(key)
@@ -44,11 +66,7 @@ class RedisJSONStorage:
             )
 
     def __setitem__(self, key: str, value: Any):
-        self.client.set(
-            key,
-            json.dumps(value),
-            ex=config.expire_time,
-        )
+        super().__setitem(key, json.dumps(value))
 
     def __delitem__(self, key: str):
         self.client.delete(key)
@@ -57,21 +75,32 @@ class RedisJSONStorage:
         return self.client.exists(key)
 
 
-class ServiceCache:
+class RedisSetStorage:
     def __init__(self):
         self.client = Redis.from_url(config.redis_url)
 
-    def __getitem__(self, key: str):
+    def __getitem__(self, key: str) -> list[str]:
         return self.client.smembers(key)
 
-    def add(self, key: str, value: str):
-        self.client.sadd(key, value)
+    def __delitem__(self, key: str):
+        self.client.delete(key)
 
-    def contains(self, key: str, value: str):
+    def __contains__(self, key: str):
+        return self.client.exists(key)
+
+    def sappend(self, key: str, value: str):
+        self.client.sadd(key, value)
+        self.client.expire(key, config.expire_time)
+
+    def scontains(self, key: str, value: str) -> bool:
         return self.client.sismember(key, value)
 
-    def remove(self, key: str, value: str):
+    def sclear(self, key: str):
+        self.__delitem__(key)
+
+    def sremove(self, key: str, value: str):
         self.client.srem(key, value)
+        self.client.expire(key, config.expire_time)
 
 
 def get_json_storage() -> Generator:
@@ -79,6 +108,11 @@ def get_json_storage() -> Generator:
     yield storage
 
 
-def get_service_cache() -> Generator:
-    service_cache = ServiceCache()
+def get_set_storage() -> Generator:
+    service_cache = RedisSetStorage()
+    yield service_cache
+
+
+def get_string_storage() -> Generator:
+    service_cache = RedisStringStorage()
     yield service_cache
