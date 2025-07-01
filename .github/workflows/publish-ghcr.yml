@@ -25,7 +25,7 @@ jobs:
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
-      
+
       - name: Extract metadata
         id: meta
         run: |
@@ -41,12 +41,11 @@ jobs:
             LATEST_TAG=$(git tag --list 'v*.*.*' | sort -V | tail -n1)
             FALLBACK_TAG="${LATEST_TAG:-v0.0.0}"
             
-            # Customize prefix here: 'dev-', 'pre-', etc.
             PREFIX="dev"
             echo "GIT_TAG=${PREFIX}-${FALLBACK_TAG}-${SHORT_SHA}" >> $GITHUB_ENV
             echo "IS_RELEASE=false" >> $GITHUB_ENV
           fi
-          
+
           echo "REPO_OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
 
       - name: Log in to GitHub Container Registry
@@ -64,31 +63,30 @@ jobs:
             echo "Created $(dirname "$f")/.env"
           done
 
-      - name: Build, tag, and push all Docker Compose services
+      - name: Build, tag, and push all *_service Docker Compose services
         run: |
           set -e
-      
-          SERVICES=$(docker compose config --services)
-          echo "Detected services: $SERVICES"
-      
+
+          SERVICES=$(docker compose config --services | grep '_service$')
+          echo "Filtered services: $SERVICES"
+
           for SERVICE in $SERVICES; do
             IMAGE_NAME="ghcr.io/${{ env.REPO_OWNER_LC }}/$SERVICE:${{ env.GIT_TAG }}"
-            echo "Building $SERVICE..."
+            echo "🛠️ Building $SERVICE"
             docker compose build $SERVICE
-      
+
             IMAGE_ID=$(docker compose images -q $SERVICE)
-      
             if [[ -z "$IMAGE_ID" ]]; then
               echo "No image built for $SERVICE, skipping."
               continue
             fi
-      
+
             echo "Tagging $IMAGE_ID as $IMAGE_NAME"
             docker tag "$IMAGE_ID" "$IMAGE_NAME"
-      
+
             echo "Pushing $IMAGE_NAME"
             docker push "$IMAGE_NAME"
-      
+
             if [[ "${{ env.IS_RELEASE }}" == "true" ]]; then
               LATEST_TAG="ghcr.io/${{ env.REPO_OWNER_LC }}/$SERVICE:latest"
               echo "Tagging and pushing as $LATEST_TAG"
