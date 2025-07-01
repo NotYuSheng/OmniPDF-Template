@@ -12,15 +12,17 @@ import shared_utils.redis
 SESSION_COOKIE_NAME: str = "OmniPDFSession"
 
 
-class SessionStorage(shared_utils.redis.RedisJSONStorage):
-    def generate_session_id(self) -> str:
+class SessionStorage(shared_utils.redis.RedisSetStorage):
+    def generate_session(self) -> str:
         session_id = uuid4().hex
         while self.client.get(session_id):
             session_id = uuid4().hex
+        # create an empty list
+        self.sappend(session_id, "")
         return session_id
 
 
-def get_session_storage() -> Generator:
+def get_session_storage() -> Generator[SessionStorage]:
     storage = SessionStorage()
     yield storage
 
@@ -45,8 +47,7 @@ def set_doc_list(session_id: str, session: Any, session_storage: SessionStorage)
 def create_new_session(
     response: Response, session_storage: SessionStorage = Depends(get_session_storage)
 ) -> str:
-    session_id = session_storage.generate_session_id()
-    session_storage[session_id] = []
+    session_id = session_storage.generate_session()
     response.set_cookie(SESSION_COOKIE_NAME, session_id, httponly=True)
     return session_id
 
@@ -57,9 +58,7 @@ def delete_session(
     session_storage: SessionStorage = Depends(get_session_storage),
 ):
     if session_id:
-        response.set_cookie(
-            SESSION_COOKIE_NAME, session_id, httponly=True, max_age=0
-        )
+        response.set_cookie(SESSION_COOKIE_NAME, session_id, httponly=True, max_age=0)
         del session_storage[session_id]
 
 
@@ -77,7 +76,8 @@ def validate_session_doc_pair(
     valid_session: bool = Depends(validate_session_id),
 ) -> bool:
     if valid_session:
-        return doc_id in session_storage[session_id]
+        return session_storage.scontains(session_id, doc_id)
+        # return doc_id in session_storage[session_id]
     return False
 
 
@@ -90,28 +90,16 @@ def get_doc_list_append_function(
         session_id = create_new_session(response, session_storage=session_storage)
 
     def append_doc(filename: str):
-        session_data = session_storage[session_id]
-        if isinstance(session_data, list):
-            session_data.append(filename)
-        else:
-            session_data = [filename]
-        session_storage[session_id] = session_data
+        session_storage.sappend(session_id, filename)
 
     return append_doc
 
 
 def get_doc_list_remove_function(
-    response: Response,
     session_id: str = Depends(get_session_id),
     session_storage: SessionStorage = Depends(get_session_storage),
 ) -> Callable[[str], None]:
-    if not validate_session_id(session_id, session_storage):
-        session_id = create_new_session(response, session_storage=session_storage)
-
     def remove_doc(filename: str):
-        session_data: list[str] = session_storage[session_id]
-        if filename in session_data:
-            session_data.remove(filename)
-            session_storage[session_id] = session_data
+        session_storage.sremove(session_id, filename)
 
     return remove_doc
