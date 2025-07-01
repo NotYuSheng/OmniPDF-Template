@@ -28,7 +28,7 @@ jobs:
         run: |
           SHORT_SHA=$(git rev-parse --short HEAD)
           echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
-      
+          
           if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
             TAG_NAME="${{ github.event.release.tag_name }}"
             echo "GIT_TAG=$TAG_NAME" >> $GITHUB_ENV
@@ -37,13 +37,13 @@ jobs:
             git fetch --tags
             LATEST_TAG=$(git tag --list 'v*.*.*' | sort -V | tail -n1)
             FALLBACK_TAG="${LATEST_TAG:-v0.0.0}"
-      
+            
             # Customize prefix here: 'dev-', 'pre-', etc.
             PREFIX="dev"
             echo "GIT_TAG=${PREFIX}-${FALLBACK_TAG}-${SHORT_SHA}" >> $GITHUB_ENV
             echo "IS_RELEASE=false" >> $GITHUB_ENV
           fi
-      
+          
           echo "REPO_OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
 
       - name: Log in to GitHub Container Registry
@@ -52,6 +52,14 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Copy example.env to .env
+        run: |
+          echo "Copying example.env to .env..."
+          find . -name "example.env" | while read f; do
+            cp "$f" "$(dirname "$f")/.env"
+            echo "✓ Created $(dirname "$f")/.env"
+          done
 
       - name: Build, tag, and push all Docker Compose services
         run: |
