@@ -15,7 +15,7 @@ SESSION_COOKIE_NAME: str = "OmniPDFSession"
 class SessionStorage(shared_utils.redis.RedisSetStorage):
     def generate_session(self) -> str:
         session_id = uuid4().hex
-        while self.client.get(session_id):
+        while session_id in self:
             session_id = uuid4().hex
         # create an empty list
         self.sappend(session_id, "")
