@@ -57,7 +57,7 @@ jobs:
             echo "Waiting for $NAME via http://localhost:8080/$PREFIX/health..."
       
             for i in {1..30}; do
-              STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost/$PREFIX/health")
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:8080/$PREFIX/health")
               if [ "$STATUS" == "200" ]; then
                 echo "$NAME is healthy"
                 break
