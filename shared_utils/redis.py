@@ -48,9 +48,6 @@ class RedisStringStorage:
 
 # Stores the data as string using json
 class RedisJSONStorage(RedisStringStorage):
-    def __init__(self):
-        super().__init__()
-
     def __getitem__(self, key: str):
         raw = self.client.get(key)
         if not raw:
@@ -67,12 +64,6 @@ class RedisJSONStorage(RedisStringStorage):
 
     def __setitem__(self, key: str, value: Any):
         super().__setitem__(key, json.dumps(value))
-
-    def __delitem__(self, key: str):
-        self.client.delete(key)
-
-    def __contains__(self, key: str):
-        return self.client.exists(key)
 
 
 class RedisSetStorage:
