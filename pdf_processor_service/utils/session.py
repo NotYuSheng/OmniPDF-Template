@@ -27,21 +27,9 @@ def get_session_storage() -> Generator[SessionStorage]:
     yield storage
 
 
-def get_doc_list(
-    request: Request, session_storage: SessionStorage = Depends(get_session_storage)
-):
-    session_id = request.cookies.get(SESSION_COOKIE_NAME, "")
-    session_data = session_storage[session_id]
-    return session_data if session_data is not None else []
-
-
 def get_session_id(request: Request):
     session_id = request.cookies.get(SESSION_COOKIE_NAME, "")
     return session_id
-
-
-def set_doc_list(session_id: str, session: Any, session_storage: SessionStorage):
-    session_storage[session_id] = session
 
 
 def create_new_session(
