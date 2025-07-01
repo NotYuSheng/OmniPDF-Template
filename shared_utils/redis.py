@@ -88,17 +88,17 @@ class RedisSetStorage:
     def __contains__(self, key: str):
         return self.client.exists(key)
 
-    def sappend(self, key: str, value: str):
+    def add(self, key: str, value: str):
         self.client.sadd(key, value)
         self.client.expire(key, config.expire_time)
 
-    def scontains(self, key: str, value: str) -> bool:
+    def contains(self, key: str, value: str) -> bool:
         return self.client.sismember(key, value)
 
-    def sclear(self, key: str):
+    def clear(self, key: str):
         self.__delitem__(key)
 
-    def sremove(self, key: str, value: str):
+    def remove(self, key: str, value: str):
         self.client.srem(key, value)
         self.client.expire(key, config.expire_time)
 

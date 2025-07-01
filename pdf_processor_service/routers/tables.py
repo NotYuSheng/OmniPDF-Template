@@ -38,7 +38,7 @@ async def get_pdf_tables(
     else:
         req = await proxy_get(f"{TABLE_PROCESSOR_URL}/{doc_id}")
     if req.status_code == 202 and not doc_is_processing:
-        service_cache.append(__name__, doc_id)
+        service_cache.add(__name__, doc_id)
     elif req.status_code == 200 and doc_is_processing:
         service_cache.remove(__name__, doc_id)
     response.status_code = req.status_code

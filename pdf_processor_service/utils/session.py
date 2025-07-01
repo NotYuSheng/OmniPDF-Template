@@ -18,7 +18,7 @@ class SessionStorage(shared_utils.redis.RedisSetStorage):
         while session_id in self:
             session_id = uuid4().hex
         # create an empty list
-        self.sappend(session_id, "")
+        self.add(session_id, "")
         return session_id
 
 
@@ -76,7 +76,7 @@ def validate_session_doc_pair(
     valid_session: bool = Depends(validate_session_id),
 ) -> bool:
     if valid_session:
-        return session_storage.scontains(session_id, doc_id)
+        return session_storage.contains(session_id, doc_id)
         # return doc_id in session_storage[session_id]
     return False
 
@@ -90,7 +90,7 @@ def get_doc_list_append_function(
         session_id = create_new_session(response, session_storage=session_storage)
 
     def append_doc(filename: str):
-        session_storage.sappend(session_id, filename)
+        session_storage.add(session_id, filename)
 
     return append_doc
 
@@ -100,6 +100,6 @@ def get_doc_list_remove_function(
     session_storage: SessionStorage = Depends(get_session_storage),
 ) -> Callable[[str], None]:
     def remove_doc(filename: str):
-        session_storage.sremove(session_id, filename)
+        session_storage.remove(session_id, filename)
 
     return remove_doc
