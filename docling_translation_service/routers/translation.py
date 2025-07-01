@@ -5,7 +5,7 @@ from shared_utils.s3_utils import save_job, load_job
 
 import os
 import logging
-import httpx  # Replaces requests for async calls
+import httpx
 
 import asyncio
 from asyncio import Semaphore
@@ -79,39 +79,6 @@ async def doc_translate(payload: TranslateResponse = Body(...)):
     logger.info(f"Received translation request: doc_id={doc_id}")
     save_job(doc_id=doc_id, job_data={}, status="processing", job_type="translation")
 
-    # try:
-    #     for i, entry in enumerate(data.texts):
-    #         original_text = entry.get("text") or entry.get("orig")
-    #         if original_text:
-    #             translated_text = await translate(original_text, source_lang=source_lang, target_lang=target_lang)
-    #             entry_dict = dict(entry) if not isinstance(entry, dict) else entry
-    #             entry_dict["translated_text"] = translated_text
-    #             data.texts[i] = entry_dict
-
-    #     for table in data.tables:
-    #         table_data = table.get("data", {})
-    #         table_cells = table_data.get("table_cells", [])
-    #         for i, entry in enumerate(table_cells):
-    #             original_text = entry.get("text")
-    #             if original_text:
-    #                 translated_text = await translate(original_text, source_lang=source_lang, target_lang=target_lang)
-    #                 entry_dict = dict(entry) if not isinstance(entry, dict) else entry
-    #                 entry_dict["translated_text"] = translated_text
-    #                 table_cells[i] = entry_dict
-
-    #     save_job(doc_id=doc_id, job_data=data, status="completed", job_type="translation")
-    #     logger.info(f"Translation completed: doc_id={doc_id}")
-
-    #     return TranslateResponse(
-    #         doc_id=doc_id,
-    #         source_lang=source_lang,
-    #         target_lang=target_lang,
-    #         docling=data
-    #     )
-    # except Exception as e:
-    #     logger.error(f"Translation failed: doc_id={doc_id} - {e}")
-    #     save_job(doc_id=doc_id, job_data={}, status="failed", job_type="translation")
-    #     return JSONResponse(content={"error": "Translation failed."}, status_code=500)
     try:
         # Translate texts concurrently
         text_tasks = [
@@ -139,12 +106,19 @@ async def doc_translate(payload: TranslateResponse = Body(...)):
             target_lang=target_lang,
             docling=data
         )
+    except httpx.HTTPStatusError as e:
+        logger.error(f"LLM API error during translation for doc_id={doc_id}: {e.response.status_code} - {e.response.text}")
+        save_job(doc_id=doc_id, job_data={}, status="failed", job_type="translation")
+        return JSONResponse(content={"error": f"LLM API error: {e.response.text}"}, status_code=e.response.status_code)
+    except (KeyError, IndexError, json.JSONDecodeError) as e:
+        logger.error(f"Failed to parse LLM response for doc_id={doc_id}: {e}")
+        save_job(doc_id=doc_id, job_data={}, status="failed", job_type="translation")
+        return JSONResponse(content={"error": "Failed to parse LLM response."}, status_code=500)
     except Exception as e:
         logger.error(f"Translation failed: doc_id={doc_id} - {e}")
         logger.error(traceback.format_exc())
         save_job(doc_id=doc_id, job_data={}, status="failed", job_type="translation")
         return JSONResponse(content={"error": "Translation failed."}, status_code=500)
-
 
 @router.get("/status/{doc_id}")
 def get_status(doc_id: str):
