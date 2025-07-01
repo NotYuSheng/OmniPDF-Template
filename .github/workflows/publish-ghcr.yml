@@ -82,13 +82,11 @@ jobs:
             echo "Building $SERVICE"
             docker compose build $SERVICE
 
-            # Debug
-            docker image ls --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}"
-
             IMAGE_ID=$(docker image ls --filter=reference="ghcr.io/${{ env.REPO_OWNER_LC }}/$SERVICE*" --format "{{.ID}}" | head -n 1)
             if [[ -z "$IMAGE_ID" ]]; then
-              echo "No image built for $SERVICE, skipping."
-              continue
+              echo "Build failed: No image built for $SERVICE ($IMAGE_NAME)"
+              docker image ls --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}"
+              exit 1
             fi
 
             echo "Tagging $IMAGE_ID as $IMAGE_NAME"
