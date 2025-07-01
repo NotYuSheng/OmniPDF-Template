@@ -28,8 +28,6 @@ services:
       context: .
       dockerfile: ./embedder_service/Dockerfile
     container_name: embedder_service
-    ports:
-      - "8005:8000"
     env_file:
       - ./embedder_service/.env
     depends_on:
@@ -48,6 +46,7 @@ services:
       - pdf_extraction_service
       - pdf_processor_service
       - chat_service
+      - embedder_service
 
   redis:
     container_name: redis
