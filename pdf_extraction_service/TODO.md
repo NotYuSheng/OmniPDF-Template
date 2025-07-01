@@ -1,0 +1,2 @@
+- [ ] Add acceleration to docling
+- [ ] Add image extraction
