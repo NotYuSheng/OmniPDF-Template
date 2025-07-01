@@ -66,7 +66,7 @@ class RedisJSONStorage(RedisStringStorage):
             )
 
     def __setitem__(self, key: str, value: Any):
-        super().__setitem(key, json.dumps(value))
+        super().__setitem__(key, json.dumps(value))
 
     def __delitem__(self, key: str):
         self.client.delete(key)
@@ -79,7 +79,7 @@ class RedisSetStorage:
     def __init__(self):
         self.client = Redis.from_url(config.redis_url)
 
-    def __getitem__(self, key: str) -> list[str]:
+    def __getitem__(self, key: str) -> set[str]:
         return self.client.smembers(key)
 
     def __delitem__(self, key: str):
