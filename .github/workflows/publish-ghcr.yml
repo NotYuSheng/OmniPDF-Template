@@ -61,28 +61,38 @@ jobs:
           echo "Copying example.env to .env..."
           find . -name "example.env" | while read f; do
             cp "$f" "$(dirname "$f")/.env"
-            echo "✓ Created $(dirname "$f")/.env"
+            echo "Created $(dirname "$f")/.env"
           done
 
       - name: Build, tag, and push all Docker Compose services
         run: |
           set -e
+      
           SERVICES=$(docker compose config --services)
+          echo "Detected services: $SERVICES"
+      
           for SERVICE in $SERVICES; do
             IMAGE_NAME="ghcr.io/${{ env.REPO_OWNER_LC }}/$SERVICE:${{ env.GIT_TAG }}"
             echo "Building $SERVICE..."
             docker compose build $SERVICE
-
-            echo "Tagging image as $IMAGE_NAME"
-            docker tag $(docker compose images -q $SERVICE) $IMAGE_NAME
-
+      
+            IMAGE_ID=$(docker compose images -q $SERVICE)
+      
+            if [[ -z "$IMAGE_ID" ]]; then
+              echo "No image built for $SERVICE, skipping."
+              continue
+            fi
+      
+            echo "Tagging $IMAGE_ID as $IMAGE_NAME"
+            docker tag "$IMAGE_ID" "$IMAGE_NAME"
+      
             echo "Pushing $IMAGE_NAME"
-            docker push $IMAGE_NAME
-
+            docker push "$IMAGE_NAME"
+      
             if [[ "${{ env.IS_RELEASE }}" == "true" ]]; then
               LATEST_TAG="ghcr.io/${{ env.REPO_OWNER_LC }}/$SERVICE:latest"
               echo "Tagging and pushing as $LATEST_TAG"
-              docker tag $IMAGE_NAME $LATEST_TAG
-              docker push $LATEST_TAG
+              docker tag "$IMAGE_ID" "$LATEST_TAG"
+              docker push "$LATEST_TAG"
             fi
           done
