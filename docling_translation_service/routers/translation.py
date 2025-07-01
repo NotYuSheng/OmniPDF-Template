@@ -57,7 +57,7 @@ async def translate(prompt, source_lang=None, target_lang="English"):
         return response_json["choices"][0]["message"]["content"]
     except (KeyError, IndexError, json.JSONDecodeError) as e:
         logger.error(f"Failed to parse LLM response: {e}")
-        return "[Translation Error]"
+        return None
 
 async def safe_translate(entry, source_lang, target_lang):
     async with semaphore:
@@ -88,15 +88,22 @@ async def doc_translate(payload: TranslateResponse = Body(...)):
         ]
         data.texts = await asyncio.gather(*text_tasks)
 
-        # Translate table_cells concurrently
-        for table in data.tables:
+        # Track all tasks and positions to reassign later
+        all_table_tasks = []
+        table_cell_refs = []  # (table_idx, cell_idx)
+
+        for table_idx, table in enumerate(data.tables):
             table_data = table.get("data", {})
             table_cells = table_data.get("table_cells", [])
-            table_tasks = [
-                safe_translate(entry, source_lang, target_lang)
-                for entry in table_cells
-            ]
-            table_data["table_cells"] = await asyncio.gather(*table_tasks)
+            for cell_idx, entry in enumerate(table_cells):
+                all_table_tasks.append(safe_translate(entry, source_lang, target_lang))
+                table_cell_refs.append((table_idx, cell_idx))
+
+        translated_cells = await asyncio.gather(*all_table_tasks)
+
+        # Reassign translated cells back to their correct table
+        for (table_idx, cell_idx), translated_entry in zip(table_cell_refs, translated_cells):
+            data.tables[table_idx]["data"]["table_cells"][cell_idx] = translated_entry
 
         save_job(doc_id=doc_id, job_data=data, status="completed", job_type="translation")
         logger.info(f"Translation completed: doc_id={doc_id}")
@@ -109,16 +116,33 @@ async def doc_translate(payload: TranslateResponse = Body(...)):
         )
     except httpx.HTTPStatusError as e:
         logger.error(f"LLM API error during translation for doc_id={doc_id}: {e.response.status_code} - {e.response.text}")
-        save_job(doc_id=doc_id, job_data={}, status="failed", job_type="translation")
+        save_job(doc_id=doc_id, 
+                 job_data={}, 
+                 status="failed", 
+                 job_type="translation"
+                 )
+        
         return JSONResponse(content={"error": f"LLM API error: {e.response.text}"}, status_code=e.response.status_code)
+    
     except (KeyError, IndexError, json.JSONDecodeError) as e:
         logger.error(f"Failed to parse LLM response for doc_id={doc_id}: {e}")
-        save_job(doc_id=doc_id, job_data={}, status="failed", job_type="translation")
+        save_job(doc_id=doc_id, 
+                 job_data={}, 
+                 status="failed", 
+                 job_type="translation"
+                 )
+        
         return JSONResponse(content={"error": "Failed to parse LLM response."}, status_code=500)
+    
     except Exception as e:
         logger.error(f"Translation failed: doc_id={doc_id} - {e}")
         logger.error(traceback.format_exc())
-        save_job(doc_id=doc_id, job_data={}, status="failed", job_type="translation")
+        save_job(doc_id=doc_id, 
+                 job_data={}, 
+                 status="failed", 
+                 job_type="translation"
+                 )
+        
         return JSONResponse(content={"error": "Translation failed."}, status_code=500)
 
 @router.get("/status/{doc_id}")
