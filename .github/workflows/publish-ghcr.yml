@@ -79,10 +79,13 @@ jobs:
 
           for SERVICE in $SERVICES; do
             IMAGE_NAME="ghcr.io/${{ env.REPO_OWNER_LC }}/$SERVICE:${{ env.GIT_TAG }}"
-            echo "🛠️ Building $SERVICE"
+            echo "Building $SERVICE"
             docker compose build $SERVICE
 
-            IMAGE_ID=$(docker compose images -q $SERVICE)
+            # Debug
+            docker image ls --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}"
+
+            IMAGE_ID=$(docker image ls --filter=reference="ghcr.io/${{ env.REPO_OWNER_LC }}/$SERVICE*" --format "{{.ID}}" | head -n 1)
             if [[ -z "$IMAGE_ID" ]]; then
               echo "No image built for $SERVICE, skipping."
               continue
