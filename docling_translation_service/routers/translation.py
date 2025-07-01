@@ -15,10 +15,11 @@ import json
 router = APIRouter(prefix="/translation", tags=["translation"])
 logger = logging.getLogger(__name__)
 
-LLM_URL = "http://qwen2.5:8000/v1/chat/completions"
+LLM_URL = os.getenv("LLM_URL")
 TOKEN = os.getenv("LLM_API_TOKEN")
 
-semaphore = Semaphore(5)
+LLM_CONCURRENCY = int(os.getenv("LLM_CONCURRENCY", "5"))
+semaphore = Semaphore(LLM_CONCURRENCY)
 
 async def translate(prompt, source_lang=None, target_lang="English"):
     if source_lang:
@@ -121,12 +122,11 @@ async def doc_translate(payload: TranslateResponse = Body(...)):
         return JSONResponse(content={"error": "Translation failed."}, status_code=500)
 
 @router.get("/status/{doc_id}")
-def get_status(doc_id: str):
+async def get_status(doc_id: str):
     job = load_job(doc_id=doc_id, job_type="translation")
     if job is None:
-        return JSONResponse(content="failed", status_code=404)
-
+        return JSONResponse(content={"status": "failed"}, status_code=404)
     return JSONResponse(
-        content=job["status"],
+        content={"status": job["status"]},
         status_code=200 if job["status"] == "completed" else 202
     )
