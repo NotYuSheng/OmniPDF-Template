@@ -17,6 +17,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Copy example.env to .env
+        run: |
+          echo "Copying example.env to .env..."
+          find . -name "example.env" | while read f; do
+            cp "$f" "$(dirname "$f")/.env"
+            echo "✓ Created $(dirname "$f")/.env"
+          done
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
