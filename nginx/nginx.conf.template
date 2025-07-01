@@ -20,7 +20,7 @@ server {
     location /chat/ {
         proxy_pass ${CHAT_URL}/;
     }
-    
+ 
     location /docling_translation/ {
         proxy_pass ${DOCLING_TRANSLATION_URL}/;
         
@@ -28,6 +28,8 @@ server {
         proxy_send_timeout 300;
         proxy_read_timeout 300;
         send_timeout 300;
-
+        
+    location /embedder/ {
+        proxy_pass ${EMBEDDER_URL}/;
     }
 }

@@ -30,11 +30,9 @@ services:
       context: .
       dockerfile: ./docling_translation_service/Dockerfile
     container_name: docling_translation_service
-    # ports:
-    #   - "8003:8000"
     env_file:
       - ./docling_translation_service/.env
-
+      
   embedder_service:
     build:
       context: .
@@ -61,6 +59,7 @@ services:
       - pdf_processor_service
       - chat_service
       - docling_translation_service
+      - embedder_service
 
   redis:
     container_name: redis
