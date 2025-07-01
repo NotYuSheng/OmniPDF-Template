@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional, List, Any
 
-class PDFDataResponse(BaseModel):
+class DoclingTranslationResponse(BaseModel):
     schema_name: str
     version: str 
     name: str 
@@ -14,7 +14,8 @@ class PDFDataResponse(BaseModel):
     form_items: List[Any]
     pages: Any
 
-class ExtractResponse(BaseModel):
+class TranslateResponse(BaseModel):
     doc_id: str
-    status: str
-    result: Optional[PDFDataResponse] = None
+    docling: Optional[DoclingTranslationResponse] = None
+    source_lang: str
+    target_lang: str

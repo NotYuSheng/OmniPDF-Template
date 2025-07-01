@@ -1,5 +1,4 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException
-from fastapi.responses import JSONResponse
 import logging
 import time
 
@@ -38,7 +37,12 @@ def process_pdf(doc_id: str, presign_url: str):
             }
         }
 
-        save_job(doc_id, job_data)
+        save_job(doc_id = doc_id, 
+                 job_data = job_data, 
+                 status = "completed", 
+                 job_type = "extraction"
+                 )
+        
         logger.info(f"Time to process PDF: {time.time() - start_time}")
 
     except Exception as e:
@@ -48,28 +52,38 @@ def process_pdf(doc_id: str, presign_url: str):
             "status": "error",
             "message": "Failed to download or parse document"
         }
-        save_job(doc_id, error_job)
+        save_job(doc_id = doc_id, 
+                 job_data = error_job, 
+                 status = "failed", 
+                 job_type = "extraction"
+                 )
 
 @router.post("/extract", response_model=ExtractResponse, status_code=202)
 def submit_pdf(doc_id: str, download_url: str, background_tasks: BackgroundTasks):
-    save_job(doc_id, {
-        "doc_id": doc_id,
-        "status": "processing"
-    })
+    save_job(doc_id = doc_id, 
+             job_data = {}, 
+             status = "processing", 
+             job_type = "extraction"
+             )
 
     background_tasks.add_task(process_pdf, doc_id, download_url)
     return ExtractResponse(doc_id=doc_id, status="processing")
 
 @router.get("/{doc_id}", response_model=ExtractResponse)
-def get_status(doc_id: str):
-    job = load_job(doc_id)
+async def get_status(doc_id: str):
+    job = load_job(doc_id=doc_id, job_type="extraction")
     if not job:
         raise HTTPException(status_code=404, detail="Document ID not found")
 
-    if job.get("status") == "error":
-        raise HTTPException(status_code=500, detail=job.get("message", "Processing failed"))
+    if job.get("status") == "failed":
+        error_message = job.get("data", {}).get("message", "Processing failed")
+        raise HTTPException(status_code=500, detail=error_message)
+    
+    job_data = job.get("data", {})
+    result = job_data.get("result", None)
 
-    if job.get("status") == "processing":
-        return JSONResponse(status_code=204, content=job)
-
-    return ExtractResponse(**job)
+    return ExtractResponse(
+        doc_id=doc_id,
+        status=job.get("status", "unknown"),
+        result=result
+    )
