@@ -33,23 +33,34 @@ async def translate(prompt, source_lang=None, target_lang="English"):
             f"You are a professional translator. Think deeply and translate the following to '{target_lang}'. "
             f"Detect the source language automatically and return only the translated text."
         )
+    retries = 3
+    delay = 2
 
-    async with httpx.AsyncClient() as client:
-        r = await client.post(
-            LLM_URL,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {TOKEN}"
-            },
-            json={
-                "model": "qwen2.5",
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt}
-                ],
-                "temperature": 0
-            }
-        )
+    for attempt in range(retries):
+        try:
+            timeout = httpx.Timeout(60.0, connect=10.0)
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                r = await client.post(
+                    LLM_URL,
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {TOKEN}"
+                    },
+                    json={
+                        "model": "qwen2.5",
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": prompt}
+                        ],
+                        "temperature": 0
+                    }
+                )
+        except httpx.ReadTimeout as e:
+            logger.warning(f"ReadTimeout during LLM call (attempt {attempt + 1}/{retries}): {e}")
+            if attempt < retries - 1:
+                await asyncio.sleep(delay)
+            else:
+                raise
 
     r.raise_for_status()
     try:
@@ -62,13 +73,19 @@ async def translate(prompt, source_lang=None, target_lang="English"):
 async def safe_translate(entry, source_lang, target_lang):
     async with semaphore:
         original_text = entry.get("text") or entry.get("orig")
-        if original_text:
-            translated = await translate(original_text, source_lang=source_lang, target_lang=target_lang)
-            entry_dict = dict(entry) if not isinstance(entry, dict) else entry
-            entry_dict["translated_text"] = translated
-            return entry_dict
-        return entry
+        entry_dict = dict(entry) if not isinstance(entry, dict) else entry
 
+        if original_text:
+            try:
+                translated = await translate(original_text, source_lang=source_lang, target_lang=target_lang)
+                entry_dict["translated_text"] = translated or "error"
+            except Exception as e:
+                logger.warning(f"Translation failed for text '{original_text[:30]}...': {e}")
+                entry_dict["translated_text"] = "error"
+        else:
+            entry_dict["translated_text"] = "error"
+
+        return entry_dict
 
 @router.post("/", response_model=TranslateResponse)
 async def doc_translate(payload: TranslateResponse = Body(...)):

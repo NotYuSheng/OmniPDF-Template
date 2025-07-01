@@ -28,6 +28,7 @@ server {
         proxy_send_timeout 300;
         proxy_read_timeout 300;
         send_timeout 300;
+    }
         
     location /embedder/ {
         proxy_pass ${EMBEDDER_URL}/;
