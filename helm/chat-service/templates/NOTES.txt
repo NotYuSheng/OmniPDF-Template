@@ -1,0 +1,36 @@
+{{- if .Values.ingress.enabled }}
+
+1. Access your application via Ingress:
+{{- range .Values.ingress.hosts }}
+  {{- $host := .host }}
+  {{- range .paths }}
+  - http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host }}{{ .path }}
+  {{- end }}
+{{- end }}
+
+{{- else if contains "NodePort" .Values.service.type }}
+
+1. Access your application via NodePort:
+  export NODE_PORT=$(kubectl get svc {{ include "chat-service.fullname" . }} --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}")
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo "Visit: http://$$NODE_IP:$$NODE_PORT"
+
+{{- else if contains "LoadBalancer" .Values.service.type }}
+
+1. Access your application via LoadBalancer:
+  NOTE: External IP might take a few minutes to be available.
+  Run:
+    kubectl get svc --namespace {{ .Release.Namespace }} -w {{ include "chat-service.fullname" . }}
+  When ready:
+    export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "chat-service.fullname" . }} -o jsonpath="{.status.loadBalancer.ingress[0].ip}")
+    echo "Visit: http://$$SERVICE_IP:{{ .Values.service.port }}"
+
+{{- else }}
+
+1. Access your application via port-forward:
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "chat-service.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  kubectl --namespace {{ .Release.Namespace }} port-forward $$POD_NAME 8080:8080
+  Then open:
+  http://127.0.0.1:8080
+
+{{- end }}
