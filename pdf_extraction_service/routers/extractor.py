@@ -1,13 +1,59 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 import logging
 import time
+import io
 
 from models.extractor import ExtractResponse
-from docling.document_converter import DocumentConverter
-from shared_utils.s3_utils import save_job, load_job
+from shared_utils.s3_utils import save_job, load_job, upload_fileobj
+from pathlib import Path
+
+from docling_core.types.doc import PictureItem
+from docling.datamodel.base_models import InputFormat
+from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.document_converter import DocumentConverter, PdfFormatOption
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 logger = logging.getLogger(__name__)
+
+def extract_image(source_pdf: Path, s3_prefix: str, scale: float = 2.0):
+    opts = PdfPipelineOptions()
+    opts.images_scale = scale
+    opts.generate_page_images = True
+    opts.generate_picture_images = True
+
+    converter = DocumentConverter(
+        format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=opts)}
+    )
+
+    res = converter.convert(source_pdf)
+
+    base = source_pdf.stem
+    pic_cnt = 0
+
+    for element, _ in res.document.iterate_items():
+        if isinstance(element, PictureItem):
+            pic_cnt += 1
+            key = f"{s3_prefix}/{base}_picture_{pic_cnt}.png"
+            bbox_info = element.prov[0].bbox if element.prov else None
+            print(f"[Picture {pic_cnt}] Page {element.prov[0].page_no} BBox: {bbox_info}")
+
+        else:
+            continue
+
+        img = element.get_image(res.document)
+
+        # Save to in-memory buffer
+        buffer = io.BytesIO()
+        img.save(buffer, format="PNG")
+        buffer.seek(0)
+
+        # Upload to S3
+        success = upload_fileobj(buffer, key, content_type="image/png")
+        if not success:
+            logger.warning(f"Failed to upload {key}")
+
+    logger.info(f"Uploaded {pic_cnt} pictures to S3.")
+
 
 def process_pdf(doc_id: str, presign_url: str):
     start_time = time.time()
