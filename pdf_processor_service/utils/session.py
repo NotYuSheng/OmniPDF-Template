@@ -1,7 +1,7 @@
 # Original code from https://github.com/duyixian1234/fastapi-redis-session
 # Updated for package versions listed in requirements.txt
 
-from typing import Any, Callable, Generator
+from typing import Callable, Generator
 from uuid import uuid4
 
 from fastapi import Depends, Request, Response
