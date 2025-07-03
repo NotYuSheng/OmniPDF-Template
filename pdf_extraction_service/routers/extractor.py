@@ -4,66 +4,83 @@ import time
 import io
 
 from models.extractor import ExtractResponse
-from shared_utils.s3_utils import save_job, load_job, upload_fileobj
-from pathlib import Path
+from shared_utils.s3_utils import (
+    save_job, 
+    load_job,
+    upload_fileobj,
+    generate_presigned_url,
+)
 
 from docling_core.types.doc import PictureItem
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
+from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
+
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 logger = logging.getLogger(__name__)
 
-def extract_image(source_pdf: Path, s3_prefix: str, scale: float = 2.0):
-    opts = PdfPipelineOptions()
-    opts.images_scale = scale
-    opts.generate_page_images = True
-    opts.generate_picture_images = True
-
-    converter = DocumentConverter(
-        format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=opts)}
-    )
-
-    res = converter.convert(source_pdf)
-
-    base = source_pdf.stem
-    pic_cnt = 0
-
-    for element, _ in res.document.iterate_items():
-        if isinstance(element, PictureItem):
-            pic_cnt += 1
-            key = f"{s3_prefix}/{base}_picture_{pic_cnt}.png"
-            bbox_info = element.prov[0].bbox if element.prov else None
-            print(f"[Picture {pic_cnt}] Page {element.prov[0].page_no} BBox: {bbox_info}")
-
-        else:
-            continue
-
-        img = element.get_image(res.document)
-
-        # Save to in-memory buffer
-        buffer = io.BytesIO()
-        img.save(buffer, format="PNG")
-        buffer.seek(0)
-
-        # Upload to S3
-        success = upload_fileobj(buffer, key, content_type="image/png")
-        if not success:
-            logger.warning(f"Failed to upload {key}")
-
-    logger.info(f"Uploaded {pic_cnt} pictures to S3.")
-
-
-def process_pdf(doc_id: str, presign_url: str):
+def process_pdf(doc_id: str, presign_url: str, img_scale: float = 2.0):
     start_time = time.time()
+
+    opts = PdfPipelineOptions()
+    opts.images_scale = img_scale
+    opts.generate_picture_images = True
+    opts.generate_table_images = False
+    opts.generate_page_images = True
+
+    opts.accelerator_options = AcceleratorOptions(
+        num_threads=4, device=AcceleratorDevice.AUTO
+    )
+    
     try:
-        converter = DocumentConverter()
+        converter = DocumentConverter(
+            format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=opts)}
+        )
         result = converter.convert(presign_url)
         data = result.document.export_to_dict()
 
         for ref in ['body', 'groups']:
             data.pop(ref, None)
+
+        pic_cnt = 0
+        for element, _ in result.document.iterate_items():
+            if isinstance(element, PictureItem):
+                pic_cnt += 1
+                key = f"{doc_id}_picture_{pic_cnt}.png"
+                bbox_info = element.prov[0].bbox if element.prov else None
+                print(f"[Picture {pic_cnt}] Page {element.prov[0].page_no} BBox: {bbox_info}")
+
+            else:
+                continue
+
+            img = element.get_image(result.document)
+            buffer = io.BytesIO()
+            img.save(buffer, format="PNG")
+            buffer.seek(0)
+
+            success = upload_fileobj(buffer, key, content_type="image/png")
+            if not success:
+                logger.warning(HTTPException(status_code=500, detail=f"Failed to upload picture {pic_cnt} to S3"))
+                pass
+            presigned_url = generate_presigned_url(key)
+            if not presigned_url:
+                logger.warning(HTTPException(
+                    status_code=500, 
+                    detail=f"Failed to generate presigned URL for {key}"
+                    )
+                )
+                pass
+
+            data["pictures"][pic_cnt-1]["presigned_url"] = presigned_url
+            data["pictures"][pic_cnt-1]["key"] = key
+            data["pictures"][pic_cnt-1].get("image", {}).pop("uri", None)
+            pages = data.get("pages", {})
+            for page in pages.values():
+                image = page.get("image", {})
+                if isinstance(image, dict):
+                    image.pop("uri", None)
 
         job_data = {
             "doc_id": doc_id,
