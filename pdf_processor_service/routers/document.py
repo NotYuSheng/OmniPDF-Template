@@ -8,7 +8,7 @@ from shared_utils.s3_utils import (
     s3_client,
     S3_BUCKET,
 )
-from shared_utils.redis import (
+from utils.session import (
     get_doc_list_append_function,
     get_doc_list_remove_function,
     validate_session_doc_pair,
