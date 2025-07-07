@@ -116,3 +116,8 @@ def load_job(doc_id: str, job_type: str) -> Optional[dict]:
         logger.exception(f"Failed to load job for doc_id: {doc_id} - {e}")
         return None
 
+def get_file(key: str):
+    buffer = BytesIO()
+    s3_client.download_fileobj(Bucket=S3_BUCKET, Key=key, Fileobj=buffer)
+    return buffer
+

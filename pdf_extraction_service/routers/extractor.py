@@ -8,7 +8,6 @@ from shared_utils.s3_utils import (
     save_job, 
     load_job,
     upload_fileobj,
-    generate_presigned_url,
 )
 
 from docling_core.types.doc import PictureItem
@@ -44,14 +43,13 @@ def process_pdf(doc_id: str, presign_url: str, img_scale: float = 2.0):
         for ref in ['body', 'groups']:
             data.pop(ref, None)
 
-        pic_cnt = 0
+        pic_cnt = -1
         for element, _ in result.document.iterate_items():
             if isinstance(element, PictureItem):
                 pic_cnt += 1
-                key = f"{doc_id}_picture_{pic_cnt}.png"
+                key = f"{doc_id}/images/img_{pic_cnt}.png"
                 bbox_info = element.prov[0].bbox if element.prov else None
-                print(f"[Picture {pic_cnt}] Page {element.prov[0].page_no} BBox: {bbox_info}")
-
+                logger.info(f"[Picture {pic_cnt}] Page {element.prov[0].page_no} BBox: {bbox_info}")
             else:
                 continue
 
@@ -64,17 +62,8 @@ def process_pdf(doc_id: str, presign_url: str, img_scale: float = 2.0):
             if not success:
                 logger.warning(HTTPException(status_code=500, detail=f"Failed to upload picture {pic_cnt} to S3"))
                 pass
-            presigned_url = generate_presigned_url(key)
-            if not presigned_url:
-                logger.warning(HTTPException(
-                    status_code=500, 
-                    detail=f"Failed to generate presigned URL for {key}"
-                    )
-                )
-                pass
 
-            data["pictures"][pic_cnt-1]["presigned_url"] = presigned_url
-            data["pictures"][pic_cnt-1]["key"] = key
+            data["pictures"][pic_cnt-1]["key"] = f"img_{pic_cnt}.png"
             data["pictures"][pic_cnt-1].get("image", {}).pop("uri", None)
             pages = data.get("pages", {})
             for page in pages.values():
