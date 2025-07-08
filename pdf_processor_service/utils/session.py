@@ -10,9 +10,13 @@ import shared_utils.redis
 
 
 SESSION_COOKIE_NAME: str = "OmniPDFSession"
+SESSION_REDIS_PREFIX = "Session_Files:"
 
 
 class SessionStorage(shared_utils.redis.RedisSetStorage):
+    def __init__(self, redis_client=None, prefix=SESSION_REDIS_PREFIX):
+        super().__init__(redis_client, prefix)
+
     def generate_session(self) -> str:
         session_id = uuid4().hex
         while session_id in self:

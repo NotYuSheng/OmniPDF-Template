@@ -8,7 +8,6 @@ import logging
 import json
 
 from pydantic_settings import BaseSettings
-from fastapi import HTTPException
 from redis import Redis
 
 
@@ -24,32 +23,37 @@ class Config(BaseSettings):
 config = Config()
 
 
-# Stores the data as string
-class RedisStringStorage:
-    def __init__(self):
-        self.client = Redis.from_url(config.redis_url)
+class RedisBase:
+    def __init__(self, redis_client=None, prefix=""):
+        self.client = (
+            redis_client if redis_client else Redis.from_url(config.redis_url)
+        )
+        self.prefix = prefix
 
+    def __delitem__(self, key: str):
+        self.client.delete(self.prefix + key)
+
+    def __contains__(self, key: str):
+        return self.client.exists(self.prefix + key)
+
+
+# Stores the data as string
+class RedisStringStorage(RedisBase):
     def __getitem__(self, key: str):
-        return self.client.get(key)
+        return self.client.get(self.prefix + key)
 
     def __setitem__(self, key: str, value: str):
         self.client.set(
-            key,
+            self.prefix + key,
             value,
             ex=config.expire_time,
         )
-
-    def __delitem__(self, key: str):
-        self.client.delete(key)
-
-    def __contains__(self, key: str):
-        return self.client.exists(key)
 
 
 # Stores the data as string using json
 class RedisJSONStorage(RedisStringStorage):
     def __getitem__(self, key: str):
-        raw = self.client.get(key)
+        raw = super().__getitem__(key)
         if not raw:
             logger.info(f"Trying to load empty key {key}.")
             return None
@@ -57,41 +61,27 @@ class RedisJSONStorage(RedisStringStorage):
             return json.loads(raw)
         except json.JSONDecodeError as e:
             logger.error(f"Error parsing JSON data for {key}: {e}")
-            raise HTTPException(
-                status_code=500,
-                detail="Unable to load session data from memory. Please start a new session.",
-            )
+            raise e
 
     def __setitem__(self, key: str, value: Any):
         super().__setitem__(key, json.dumps(value))
 
 
-class RedisSetStorage:
-    def __init__(self):
-        self.client = Redis.from_url(config.redis_url)
-
+class RedisSetStorage(RedisBase):
     def __getitem__(self, key: str) -> set[str]:
-        return self.client.smembers(key)
-
-    def __delitem__(self, key: str):
-        self.client.delete(key)
-
-    def __contains__(self, key: str):
-        return self.client.exists(key)
+        return self.client.smembers(self.prefix + key)
 
     def add(self, key: str, value: str):
-        self.client.sadd(key, value)
-        self.client.expire(key, config.expire_time)
+        self.client.sadd(self.prefix + key, value)
+        self.client.expire(self.prefix + key, config.expire_time)
 
     def contains(self, key: str, value: str) -> bool:
-        return self.client.sismember(key, value)
-
-    def clear(self, key: str):
-        self.__delitem__(key)
+        return self.client.sismember(self.prefix + key, value)
 
     def remove(self, key: str, value: str):
-        self.client.srem(key, value)
-        self.client.expire(key, config.expire_time)
+        self.client.srem(self.prefix + key, value)
+        self.client.expire(self.prefix + key, config.expire_time)
+
 
 
 def get_json_storage() -> Generator:
