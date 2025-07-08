@@ -2,15 +2,10 @@ import logging
 from os import getenv
 
 import os
-import io
 import boto3
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-from fastapi.responses import StreamingResponse
-
-from models.images import ImageResponse
-from utils.asynchttp import proxy_get, proxy_post
-from shared_utils.s3_utils import generate_presigned_url, get_file
+from shared_utils.s3_utils import generate_presigned_url
 from shared_utils.redis import (
     get_service_cache,
     validate_session_doc_pair,
