@@ -48,8 +48,6 @@ def process_pdf(doc_id: str, presign_url: str, img_scale: float = 2.0):
             if isinstance(element, PictureItem):
                 pic_cnt += 1
                 key = f"{doc_id}/images/img_{pic_cnt}.png"
-                bbox_info = element.prov[0].bbox if element.prov else None
-                logger.info(f"[Picture {pic_cnt}] Page {element.prov[0].page_no} BBox: {bbox_info}")
                 img = element.get_image(result.document)
                 buffer = io.BytesIO()
                 img.save(buffer, format="PNG")
@@ -57,8 +55,7 @@ def process_pdf(doc_id: str, presign_url: str, img_scale: float = 2.0):
 
                 success = upload_fileobj(buffer, key, content_type="image/png")
                 if not success:
-                    logger.warning(HTTPException(status_code=500, detail=f"Failed to upload picture {pic_cnt} to S3"))
-                    pass
+                    logger.warning(detail=f"Failed to upload picture {pic_cnt} to S3")
 
                 data["pictures"][pic_cnt]["key"] = f"img_{pic_cnt}.png"
                 data["pictures"][pic_cnt].get("image", {}).pop("uri", None)
