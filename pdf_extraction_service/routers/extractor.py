@@ -111,7 +111,7 @@ def process_pdf(doc_id: str, presign_url: str, img_scale: float = 2.0):
                  )
 
 @router.post("/extract", response_model=ExtractResponse, status_code=202)
-def submit_pdf(doc_id: str, download_url: str, background_tasks: BackgroundTasks):
+async def submit_pdf(doc_id: str, download_url: str, background_tasks: BackgroundTasks):
     save_job(doc_id = doc_id, 
              job_data = {}, 
              status = "processing", 
