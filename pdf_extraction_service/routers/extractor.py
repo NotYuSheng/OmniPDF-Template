@@ -63,8 +63,8 @@ def process_pdf(doc_id: str, presign_url: str, img_scale: float = 2.0):
                 logger.warning(HTTPException(status_code=500, detail=f"Failed to upload picture {pic_cnt} to S3"))
                 pass
 
-            data["pictures"][pic_cnt-1]["key"] = f"img_{pic_cnt}.png"
-            data["pictures"][pic_cnt-1].get("image", {}).pop("uri", None)
+            data["pictures"][pic_cnt]["key"] = f"img_{pic_cnt}.png"
+            data["pictures"][pic_cnt].get("image", {}).pop("uri", None)
             pages = data.get("pages", {})
             for page in pages.values():
                 image = page.get("image", {})
