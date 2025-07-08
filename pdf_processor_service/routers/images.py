@@ -40,8 +40,9 @@ async def get_pdf_images(
         )
 
     prefix = f"{doc_id}/images/"
-    response = s3_client.list_objects_v2(Bucket=S3_BUCKET, Prefix=prefix)
-    keys = [obj["Key"] for obj in response.get("Contents", [])]
+    paginator = s3_client.get_paginator('list_objects_v2')
+    pages = paginator.paginate(Bucket=S3_BUCKET, Prefix=prefix)
+    keys = [obj['Key'] for page in pages for obj in page.get('Contents', [])]
     
     for key in keys:
         url = generate_presigned_url(key)
