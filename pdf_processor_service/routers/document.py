@@ -35,7 +35,7 @@ async def upload_document(
     await file.seek(0)
 
     doc_id = str(uuid.uuid4())
-    key = f"{doc_id}.pdf"
+    key = f"{doc_id}/original.pdf"
 
     try:
         success = upload_fileobj(
@@ -70,7 +70,7 @@ async def get_document(
             detail="User not authorized to access this document or invalid document ID",
         )
 
-    key = f"{doc_id}.pdf"
+    key = f"{doc_id}/original.pdf"
 
     # Check if object exists
     try:
@@ -98,7 +98,7 @@ async def delete_document(
             detail="User not authorized to access this document or invalid document ID",
         )
 
-    key = f"{doc_id}.pdf"
+    key = f"{doc_id}/original.pdf"
     success = delete_file(key)
     if success:
         remove_doc(doc_id)
