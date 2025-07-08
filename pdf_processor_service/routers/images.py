@@ -4,7 +4,7 @@ from os import getenv
 from models.images import ImageResponse, ImageData
 from fastapi import APIRouter, Depends, HTTPException
 from shared_utils.s3_utils import generate_presigned_url, s3_client, S3_BUCKET, load_job
-from shared_utils.redis import validate_session_doc_pair
+from utils.session import validate_session_doc_pair
 
 router = APIRouter(prefix="/images", tags=["images"])
 logger = logging.getLogger(__name__)
