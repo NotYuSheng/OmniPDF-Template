@@ -20,9 +20,19 @@ services:
       context: .
       dockerfile: ./pdf_extraction_service/Dockerfile
     container_name: pdf_extraction_service
+    env_file:
+      - ./pdf_extraction_service/.env
     depends_on:
       - minio
 
+  docling_translation_service:
+    build:
+      context: .
+      dockerfile: ./docling_translation_service/Dockerfile
+    container_name: docling_translation_service
+    env_file:
+      - ./docling_translation_service/.env
+      
   embedder_service:
     build:
       context: .
@@ -39,13 +49,14 @@ services:
       context: .
       dockerfile: ./nginx/Dockerfile
     ports:
-      - "80:8080"
+      - "8080:8080"
     env_file:
       - ./nginx/.env
     depends_on:
       - pdf_extraction_service
       - pdf_processor_service
       - chat_service
+      - docling_translation_service
       - embedder_service
 
   redis:
