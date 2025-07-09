@@ -78,7 +78,7 @@ install-all:
 		helm install $$CHART helm/$$CHART \
 			--namespace $(NAMESPACE) \
 			--create-namespace \
-			--values helm/$$CHART/values.yaml || true; \
+			--values helm/$$CHART/values.yaml; \
 	done
 
 ## Upgrade all Helm charts in ./helm/
@@ -89,7 +89,7 @@ upgrade-all:
 		echo "Upgrading chart: $$CHART"; \
 		helm upgrade $$CHART helm/$$CHART \
 			--namespace $(NAMESPACE) \
-			--values helm/$$CHART/values.yaml || true; \
+			--values helm/$$CHART/values.yaml; \
 	done
 
 ## Uninstall all Helm charts in ./helm/
@@ -99,7 +99,7 @@ uninstall-all:
 		CHART=$$(basename $$dir); \
 		echo "Uninstalling chart: $$CHART"; \
 		helm uninstall $$CHART \
-			--namespace $(NAMESPACE) || true; \
+			--namespace $(NAMESPACE); \
 	done
 
 ## Port-forward a running pod (default 8080:8080)
