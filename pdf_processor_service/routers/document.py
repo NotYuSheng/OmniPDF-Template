@@ -106,3 +106,26 @@ async def delete_document(
     else:
         logger.warning(f"Document not found or could not be deleted: {key}")
         raise HTTPException(status_code=404, detail="Document not found")
+
+@router.get("/test/{doc_id}", status_code=204)
+async def testing(doc_id: str,
+                  valid_request: bool = Depends(validate_session_doc_pair)
+                  ):
+    if not valid_request:
+        raise HTTPException(
+            status_code=403,
+            detail="User not authorized to access this document or invalid document ID",
+        )
+
+    key = f"{doc_id}/original.json"
+
+        # Check if object exists
+    try:
+        s3_client.head_object(Bucket=S3_BUCKET, Key=key)
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "404":
+            raise HTTPException(status_code=404, detail="Document not found")
+        raise HTTPException(status_code=500, detail="Failed to check document")
+
+    presigned_url = generate_presigned_url(key)
+    return {"key": key, "url": presigned_url}
