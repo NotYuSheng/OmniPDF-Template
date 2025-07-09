@@ -7,8 +7,8 @@ CHART_DIR ?= helm/$(CHART_NAME)
 VALUES_FILE ?= $(CHART_DIR)/values.yaml
 
 # Default port for port-forwarding (override as needed)
-LOCAL_PORT ?= 8080
-REMOTE_PORT ?= 8080
+LOCAL_PORT ?= 8000
+REMOTE_PORT ?= 8000
 
 .PHONY: help install install-all upgrade upgrade-all uninstall uninstall-all lint status port-forward
 
