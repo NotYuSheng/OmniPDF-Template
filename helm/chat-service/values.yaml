@@ -125,10 +125,14 @@ affinity: {}
 env:
   - name: OPENAI_BASE_URL
     value: http://vllm-qwen:1234/v1
-  - name: OPENAI_API_KEY
-    value: lm-studio
   - name: OPENAI_MODEL
     value: qwen2.5-0.5b-instruct
+
+# Secret-based API key config
+apiKeySecret:
+  enabled: true
+  name: openai-api-key-secret
+  key: OPENAI_API_KEY
 
 #istio:
 #  enabled: true
