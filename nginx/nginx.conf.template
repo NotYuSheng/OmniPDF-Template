@@ -29,6 +29,10 @@ server {
         proxy_read_timeout 300;
         send_timeout 300;
     }
+
+    location /pdf_renderer/ {
+        proxy_pass ${PDF_RENDERER_URL}/;
+    }
         
     location /embedder/ {
         proxy_pass ${EMBEDDER_URL}/;
