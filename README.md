@@ -23,3 +23,13 @@ The following port mappings are used across the OmniPDF microservices **for deve
 | ChromaDB                  | Temporary in-memory vector store                          | 5100   |
 | S3-Compatible Store       | Object storage (e.g., MinIO S3 API)                       | 9000   |
 | MinIO Console             | MinIO web-based Admin UI                                  | 9001   |
+
+## Development Workflow
+
+This project uses a `Makefile` to simplify common Helm and Kubernetes operations.
+
+To get started, run:
+
+```bash
+make help
+```
