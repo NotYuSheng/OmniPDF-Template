@@ -82,7 +82,7 @@ In all cases, changes should be explained and ideally paired with a comment.
 
 * Ensure the code is **tested and functional** before requesting review.
 * **Respond to all reviewer comments**, even if it's just to acknowledge.
-* Avoid force-pushing once review has started unless necessary. If done, notify your reviewer.
+* Avoid force-pushing once review has started unless necessary (e.g., to address a critical bug or merge conflict). If done, notify your reviewer.
 * After resolving Gemini and peer feedback, **tag the reviewer again** for confirmation.
 
 ---
