@@ -1,23 +1,74 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 import logging
 import time
+import io
 
 from models.extractor import ExtractResponse
-from docling.document_converter import DocumentConverter
-from shared_utils.s3_utils import save_job, load_job
+from shared_utils.s3_utils import (
+    save_job, 
+    load_job,
+    upload_fileobj,
+)
+
+from docling_core.types.doc import PictureItem
+from docling.datamodel.base_models import InputFormat
+from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.document_converter import DocumentConverter, PdfFormatOption
+from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
+
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 logger = logging.getLogger(__name__)
 
-def process_pdf(doc_id: str, presign_url: str):
+def process_pdf(doc_id: str, presign_url: str, img_scale: float = 2.0):
     start_time = time.time()
+
+    opts = PdfPipelineOptions()
+    opts.images_scale = img_scale
+    opts.generate_picture_images = True
+    opts.generate_table_images = False
+    opts.generate_page_images = True
+
+    opts.accelerator_options = AcceleratorOptions(
+        num_threads=4, device=AcceleratorDevice.AUTO
+    )
+    
     try:
-        converter = DocumentConverter()
+        converter = DocumentConverter(
+            format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=opts)}
+        )
         result = converter.convert(presign_url)
         data = result.document.export_to_dict()
 
         for ref in ['body', 'groups']:
             data.pop(ref, None)
+
+        pic_cnt = -1
+        for element, _ in result.document.iterate_items():
+            if isinstance(element, PictureItem):
+                pic_cnt += 1
+                key = f"{doc_id}/images/img_{pic_cnt}.png"
+                img = element.get_image(result.document)
+                buffer = io.BytesIO()
+                img.save(buffer, format="PNG")
+                buffer.seek(0)
+
+                success = upload_fileobj(buffer, key, content_type="image/png")
+                if not success:
+                    logger.warning(detail=f"Failed to upload picture {pic_cnt} to S3")
+
+                data["pictures"][pic_cnt]["key"] = f"img_{pic_cnt}.png"
+                data["pictures"][pic_cnt].get("image", {}).pop("uri", None)
+                
+            else:
+                continue
+            
+            pages = data.get("pages", {})
+            for page in pages.values():
+                image = page.get("image", {})
+                if isinstance(image, dict):
+                    image.pop("uri", None)
+        
 
         job_data = {
             "doc_id": doc_id,
@@ -59,7 +110,7 @@ def process_pdf(doc_id: str, presign_url: str):
                  )
 
 @router.post("/extract", response_model=ExtractResponse, status_code=202)
-def submit_pdf(doc_id: str, download_url: str, background_tasks: BackgroundTasks):
+async def submit_pdf(doc_id: str, download_url: str, background_tasks: BackgroundTasks):
     save_job(doc_id = doc_id, 
              job_data = {}, 
              status = "processing", 

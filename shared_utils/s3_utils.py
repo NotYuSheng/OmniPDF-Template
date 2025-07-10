@@ -115,4 +115,3 @@ def load_job(doc_id: str, job_type: str) -> Optional[dict]:
     except (ClientError, BotoCoreError, json.JSONDecodeError) as e:
         logger.exception(f"Failed to load job for doc_id: {doc_id} - {e}")
         return None
-
