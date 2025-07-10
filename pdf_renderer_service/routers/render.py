@@ -1,8 +1,6 @@
-import requests
 import pymupdf
-import json
 import time
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
+from fastapi import APIRouter
 import logging
 import httpx
 from collections import defaultdict
@@ -28,11 +26,11 @@ async def pdf_render(doc_url: str,
         response = await client.get(json_url)
         
     if response.status_code == 200:
-        data = response.json()  # Convert JSON response to Python dict
+        json_data = response.json()  # Convert JSON response to Python dict
 
     pagewise_data = defaultdict(list)
 
-    texts = data.get("docling", {}).get("texts", [])
+    texts = json_data.get("docling", {}).get("texts", [])
     for text_item in texts:
         translated = text_item.get("translated_text", "")
         for prov in text_item.get("prov", []):
@@ -43,7 +41,7 @@ async def pdf_render(doc_url: str,
                     "translated_text": translated,
                     "bbox": bbox
                 })
-
+    data = dict(pagewise_data)
 
     doc = pymupdf.open(doc_url)
     for page in doc:
@@ -56,22 +54,19 @@ async def pdf_render(doc_url: str,
 
         page.apply_redactions()
         page.clean_contents()
-        try:
-            page_lst = data[page.number + 1]
-            for i in page_lst:
-                new_text = i["text"]
-                bbox = i["prov"][0]['bbox']
-                coords = (bbox["l"], (page.rect[3]- bbox["t"]), bbox["r"], page.rect[3]- bbox["b"])
-                translation = translate(new_text)
-                print(f"Text: {new_text}")
-                print(f"Translation: {translation}")
-                print(f"Bbox: {coords}")
 
-                page.draw_rect(coords, color=(1, 0, 1))
-                status = page.insert_htmlbox(coords, translation) # fontsize=font_size, fontname=font_name, color=text_color, align=0
-                print(f"Status: {status}")
-        except KeyError:
-            pass
-    doc.save("./output_white_boxed.pdf", garbage=3, deflate=True)
+        data_lst = data[page.number + 1]
+        for trans_data in data_lst:
+            trans_text = trans_data["translated_text"]
+            bbox = trans_data['bbox']
+            coords = (bbox["l"], (page.rect[3]- bbox["t"]), bbox["r"], page.rect[3]- bbox["b"])
+            print(f"Text: {trans_text}")
+            print(f"Bbox: {coords}")
+
+            page.draw_rect(coords, color=(1, 0, 1))
+            status = page.insert_htmlbox(coords, trans_text) # fontsize=font_size, fontname=font_name, color=text_color, align=0
+            print(f"Status: {status}")
+
+    doc.save("./output.pdf", garbage=3, deflate=True)
 
     print(f"Translation complete in {time.time() - start_time}")
