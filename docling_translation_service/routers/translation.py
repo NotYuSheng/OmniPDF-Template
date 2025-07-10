@@ -125,7 +125,8 @@ async def doc_translate(payload: TranslateResponse = Body(...)):
 
         json_bytes = io.BytesIO(json.dumps(data.model_dump()).encode('utf-8'))
         json_key = f"{doc_id}/translated.json"
-        upload_fileobj(json_bytes, json_key, "application/json")
+        if not upload_fileobj(json_bytes, json_key, "application/json"):
+            raise IOError(f"Failed to upload translated JSON to S3 for doc_id={doc_id}")
 
         save_job(doc_id=doc_id, job_data=data, status="completed", job_type="translation")
         logger.info(f"Translation completed: doc_id={doc_id}")
