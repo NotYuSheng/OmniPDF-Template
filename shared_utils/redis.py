@@ -24,11 +24,12 @@ config = Config()
 
 
 class RedisBase:
-    def __init__(self, redis_client=None, prefix=""):
+    def __init__(self, redis_client=None, prefix="", default_expiry: timedelta | None = config.expire_time):
         self.client = (
             redis_client if redis_client else Redis.from_url(config.redis_url)
         )
         self.prefix = prefix
+        self.default_expiry = default_expiry
 
     def __delitem__(self, key: str):
         self.client.delete(self.prefix + key)
@@ -40,13 +41,14 @@ class RedisBase:
 # Stores the data as string
 class RedisStringStorage(RedisBase):
     def __getitem__(self, key: str):
-        return self.client.get(self.prefix + key)
+        # return self.client.get(self.prefix + key)
+        return self.client.getex(self.prefix + key, self.default_expiry)
 
     def __setitem__(self, key: str, value: str):
         self.client.set(
             self.prefix + key,
             value,
-            ex=config.expire_time,
+            ex=self.default_expiry,
         )
 
 
@@ -68,19 +70,31 @@ class RedisJSONStorage(RedisStringStorage):
 
 
 class RedisSetStorage(RedisBase):
+    def __init__(self, redis_client=None, prefix="", default_expiry = config.expire_time):
+        super().__init__(redis_client, prefix, default_expiry)
+        self.pipeline = self.client.pipeline()
+
     def __getitem__(self, key: str) -> set[str]:
-        return self.client.smembers(self.prefix + key)
+        if self.default_expiry is not None:
+            self.pipeline.expire(self.prefix + key, self.default_expiry)
+        self.pipeline.smembers(self.prefix + key)
+        members = self.pipeline.execute()[-1]
+        return members
 
     def add(self, key: str, value: str):
-        self.client.sadd(self.prefix + key, value)
-        self.client.expire(self.prefix + key, config.expire_time)
+        self.pipeline.sadd(self.prefix + key, value)
+        if self.default_expiry is not None:
+            self.pipeline.expire(self.prefix + key, self.default_expiry)
+        self.pipeline.execute()
 
     def contains(self, key: str, value: str) -> bool:
         return self.client.sismember(self.prefix + key, value)
 
     def remove(self, key: str, value: str):
-        self.client.srem(self.prefix + key, value)
-        self.client.expire(self.prefix + key, config.expire_time)
+        self.pipeline.srem(self.prefix + key, value)
+        if self.default_expiry is not None:
+            self.pipeline.expire(self.prefix + key, self.default_expiry)
+        self.pipeline.execute()
 
 
 

@@ -1,6 +1,7 @@
 # Original code from https://github.com/duyixian1234/fastapi-redis-session
 # Updated for package versions listed in requirements.txt
 
+from datetime import timedelta
 from typing import Callable, Generator
 from uuid import uuid4
 
@@ -11,13 +12,15 @@ import shared_utils.redis
 
 SESSION_COOKIE_NAME: str = "OmniPDFSession"
 SESSION_REDIS_PREFIX = "Session_Files:"
+SESSION_FLAG_PREFIX = "SessionHeader:"
 
 
 class SessionStorage(shared_utils.redis.RedisSetStorage):
     def __init__(self, redis_client=None, prefix=SESSION_REDIS_PREFIX):
-        super().__init__(redis_client, prefix)
+        super().__init__(redis_client, prefix, default_expiry=None)
+        self.flag_expiry = timedelta(days=1)
 
-    def generate_session(self) -> str:
+    def generate_session2(self) -> str:
         session_id = uuid4().hex
         while session_id in self:
             session_id = uuid4().hex
@@ -25,6 +28,25 @@ class SessionStorage(shared_utils.redis.RedisSetStorage):
         self.add(session_id, "")
         return session_id
 
+    def generate_session(self) -> str:
+        session_id = uuid4().hex
+        while not self.client.set(SESSION_FLAG_PREFIX+ SESSION_REDIS_PREFIX + session_id, 1, ex= self.flag_expiry, nx=True):
+            session_id = uuid4().hex
+        return session_id
+    
+    def __delitem__(self, key):
+        self.client.delete(SESSION_FLAG_PREFIX+ SESSION_REDIS_PREFIX + key)
+    
+    def __contains__(self, key):
+        return self.client.exists(SESSION_FLAG_PREFIX+ SESSION_REDIS_PREFIX + key)
+    
+    def add(self, key, value):
+        self.pipeline.expire(SESSION_FLAG_PREFIX+ SESSION_REDIS_PREFIX + key, self.flag_expiry)
+        return super().add(key, value)
+    
+    def remove(self, key, value):
+        self.pipeline.expire(SESSION_FLAG_PREFIX + key, self.flag_expiry)
+        return super().remove(key, value)
 
 def get_session_storage() -> Generator[SessionStorage]:
     storage = SessionStorage()
