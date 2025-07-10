@@ -123,7 +123,7 @@ async def doc_translate(payload: TranslateResponse = Body(...)):
         for (table_idx, cell_idx), translated_entry in zip(table_cell_refs, translated_cells):
             data.tables[table_idx]["data"]["table_cells"][cell_idx] = translated_entry
 
-        json_bytes = io.BytesIO(json.dumps(data).encode('utf-8'))
+        json_bytes = io.BytesIO(json.dumps(data.model_dump()).encode('utf-8'))
         json_key = f"{doc_id}/translated.json"
         upload_fileobj(json_bytes, json_key, "application/json")
 

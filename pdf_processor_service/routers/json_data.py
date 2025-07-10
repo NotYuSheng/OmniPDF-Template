@@ -9,7 +9,7 @@ from utils.session import validate_session_doc_pair
 
 from botocore.exceptions import ClientError
 
-router = APIRouter(prefix="/test", tags=["test"])
+router = APIRouter(prefix="/json_data", tags=["json_data"])
 logger = logging.getLogger(__name__)
 
 @router.get("/{doc_id}", status_code=200)
