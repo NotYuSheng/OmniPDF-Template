@@ -17,7 +17,7 @@ All code changes must go through a structured review process to ensure quality, 
 
 ## Review Objectives
 
-> Code reviews are not expected to catch every bug or re-architect the code. Focus on clarity, correctness, structure, and alignment with team standards.
+> Code reviews are not expected to catch every bug. Focus on clarity, correctness, structure, and alignment with team standards.
 
 ### 1. **Correctness**
 
