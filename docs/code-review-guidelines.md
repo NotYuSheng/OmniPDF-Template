@@ -59,7 +59,7 @@ All code changes must go through a structured review process to ensure quality, 
 
 ### As a Reviewer:
 
-* **Be timely** — Review within a reasonable window (e.g., a few working hours).
+* **Be timely** — Review within a reasonable window (e.g., within 24 hours).
 * **Be constructive** — Focus on the code, not the coder.
 * Use comment labels:
 
