@@ -1,4 +1,3 @@
-from collections import defaultdict
 import logging
 
 from redis import Redis
@@ -34,19 +33,21 @@ def clean_s3_files(key: str):
             delete_file(f"{doc_id}.pdf")
     del redis_set_store[key]
 
+def clean_s3_file(key: str):
+    logger.info(f"deleting {key}")
+    delete_file(key)
 
 def clean_chromadb(key):
     pass
 
 
-deletion_prefix_callback_dict = defaultdict(EMPTY_FUNCTION)
-for key, func in {
+deletion_prefix_callback_dict = {
     S3_FLAG: clean_s3_files,
     "SessionHeader": clean_s3_files,
+    "S3_File": clean_s3_file,
     REDIS_FLAG: clean_redis_key,
     CHROMA_FLAG: clean_chromadb,
-}.items():
-    deletion_prefix_callback_dict[key] = func
+}
 
 
 def setup_session_expiry_timer(key: str):
@@ -57,10 +58,7 @@ def setup_session_expiry_timer(key: str):
     redis_store.client.expire(timer_key, 10)
 
 
-addition_prefix_callback_dict = defaultdict(EMPTY_FUNCTION)
-for key, func in {"Session_Files": setup_session_expiry_timer}.items():
-    pass
-    # addition_prefix_callback_dict[key] = func
+addition_prefix_callback_dict = {"Session_Files": setup_session_expiry_timer}
 
 
 def event_handler(msg):
@@ -74,26 +72,11 @@ def event_handler(msg):
         # (deletion_prefix_callback_dict[flag])(key)
         deletion_prefix_callback_dict.get(flag, lambda x: None)(key)
 
-    if any(event in msg_origin for event in ADDITION_EVENTS):
-        msg_data: str = msg["data"]
-        prefix, key = msg_data.split(SEPERATOR, maxsplit=1)
-        # (addition_prefix_callback_dict[prefix])(key)
-        addition_prefix_callback_dict.get(prefix, lambda x: None)(msg_data)
-    # if "del" in msg_data or "expired" in msg_data:
-    #     if REDIS_FLAG in msg_origin:
-    #         _, key_to_delete = msg_origin.split(REDIS_FLAG)
-    #         clean_redis_key(key_to_delete)
-    #     elif S3_FLAG in msg_origin:
-    #         # Dangerous, assumes file_ids stored in a set
-    #         _, key_to_delete = msg_origin.split(S3_FLAG)
-    #         for doc_id in redis_set_store[key_to_delete]:
-    #             doc_id = doc_id.decode()
-    #             logger.info("deleting" + doc_id)
-    #             delete_file(doc_id)
-    #         del redis_store[key_to_delete]
-    #     elif CHROMA_FLAG in msg_origin:
-    #         _, key_to_delete = msg_origin.split(CHROMA_FLAG)
-    #         del redis_store[key_to_delete]
+    # if any(event in msg_origin for event in ADDITION_EVENTS):
+    #     msg_data: str = msg["data"]
+    #     prefix, key = msg_data.split(SEPERATOR, maxsplit=1)
+    #     # (addition_prefix_callback_dict[prefix])(key)
+    #     addition_prefix_callback_dict.get(prefix, lambda x: None)(msg_data)
 
 
 async def setup_redis_watcher_thread():
