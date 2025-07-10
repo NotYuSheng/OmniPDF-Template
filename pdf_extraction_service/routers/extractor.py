@@ -15,10 +15,11 @@ from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
-
+from shared_utils.redis import RedisSimpleFileFlag
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 logger = logging.getLogger(__name__)
+redis_flag = RedisSimpleFileFlag()
 
 def process_pdf(doc_id: str, presign_url: str, img_scale: float = 2.0):
     start_time = time.time()
@@ -54,6 +55,7 @@ def process_pdf(doc_id: str, presign_url: str, img_scale: float = 2.0):
                 buffer.seek(0)
 
                 success = upload_fileobj(buffer, key, content_type="image/png")
+                redis_flag.set(key)
                 if not success:
                     logger.warning(detail=f"Failed to upload picture {pic_cnt} to S3")
 

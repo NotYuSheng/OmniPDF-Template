@@ -7,14 +7,13 @@ from typing import Any, Generator
 import logging
 import json
 
-from pydantic_settings import BaseSettings
 from redis import Redis
 
 
 logger = logging.getLogger(__name__)
 
 
-class Config(BaseSettings):
+class Config:
     redis_url: str = getenv("REDIS_URL")
     session_id_name: str = "OmniPDFSession"
     expire_time: timedelta = timedelta(hours=24)
@@ -24,10 +23,13 @@ config = Config()
 
 
 class RedisBase:
-    def __init__(self, redis_client=None, prefix="", default_expiry: timedelta | None = config.expire_time):
-        self.client = (
-            redis_client if redis_client else Redis.from_url(config.redis_url)
-        )
+    def __init__(
+        self,
+        redis_client=None,
+        prefix="",
+        default_expiry: timedelta | None = config.expire_time,
+    ):
+        self.client = redis_client if redis_client else Redis.from_url(config.redis_url)
         self.prefix = prefix
         self.default_expiry = default_expiry
 
@@ -70,7 +72,7 @@ class RedisJSONStorage(RedisStringStorage):
 
 
 class RedisSetStorage(RedisBase):
-    def __init__(self, redis_client=None, prefix="", default_expiry = config.expire_time):
+    def __init__(self, redis_client=None, prefix="", default_expiry=config.expire_time):
         super().__init__(redis_client, prefix, default_expiry)
         self.pipeline = self.client.pipeline()
 
@@ -95,6 +97,17 @@ class RedisSetStorage(RedisBase):
         if self.default_expiry is not None:
             self.pipeline.expire(self.prefix + key, self.default_expiry)
         self.pipeline.execute()
+
+
+class RedisSimpleFileFlag(RedisStringStorage):
+    def __init__(self, redis_client=None, prefix="S3_File:", default_expiry = timedelta(hours=1)):
+        super().__init__(redis_client, prefix, default_expiry)
+
+    def set(self, key):
+        self[key] = 1
+
+    def clear(self, key):
+        del self[key]
 
 
 
