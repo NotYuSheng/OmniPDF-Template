@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from typing import List, Dict, Any
 import logging
 import uuid
+import os
 from models.embed import ProcessingConfig, DataRequest
 from models.helper import get_chunking_model, get_embedding_model
 # from unstructured.partition.pdf import partition_pdf
@@ -20,11 +21,16 @@ import chromadb
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+# Use environment variable for ChromaDB path, with fallback
+# CHROMADB_PATH = os.getenv("PERSIST_DIRECTORY", "/app/my_vectordb")
+# CHROMADB_URL = os.getenv("CHROMADB_URL")
+CHROMADB_HOST = os.getenv("CHROMADB_HOST")
+CHROMADB_PORT = os.getenv("CHROMADB_PORT")
 
 # In-memory ChromaDB instance (data stored in memory)
-chroma_client = chromadb.EphemeralClient()
+# chroma_client = chromadb.EphemeralClient()
 # Persistent ChromaDB instance (data stored on disk)
-# chroma_client = chromadb.HttpClient(host="localhost", port=5100)
+# chroma_client = chromadb.PersistentClient(path=CHROMADB_PATH)
 
 
 async def data_chunking(request:DataRequest, chunker) -> List[Dict[str, Any]]:
@@ -116,7 +122,10 @@ async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: Processin
     try:
         try:
             logger.info("Getting collection...")
-            collection = chroma_client.get_or_create_collection(name=config.collection_name, embedding_function=emb_model)
+            logger.info(f"Host: {CHROMADB_HOST}")
+            logger.info(f"Port: {CHROMADB_PORT}")
+            chroma_client = await chromadb.AsyncHttpClient(host=CHROMADB_HOST, port=CHROMADB_PORT)
+            collection = await chroma_client.get_or_create_collection(name=config.collection_name, embedding_function=emb_model)
             logger.info(f"Using existing collection: {config.collection_name}")
         except Exception as e:
             logger.error(f"Collection retrieval failed: {e}")
@@ -130,7 +139,7 @@ async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: Processin
             logger.warning("No chunks to add to the collection.")
             return
         
-        collection.add(
+        await collection.add(
             ids=ids,
             documents=documents,
             metadatas=metadatas
@@ -235,17 +244,18 @@ async def pdf_embedder_service(request: DataRequest):
     
 
 @router.get("/status/{doc_id}")
-async def verify_document_embedding(doc_id: str, collection_name: str = "my_documents"):
+async def verify_document_embedding(doc_id: str, collection_name: str):
     """Verify if a document's data chunks have been successfully embedded into ChromaDB"""
-    
     try:
+        chroma_client = await chromadb.AsyncHttpClient(host=CHROMADB_HOST, port=CHROMADB_PORT)
+        
         if chroma_client is None:
             raise HTTPException(status_code=500, detail="ChromaDB client not initialized")
         
-        collection = chroma_client.get_or_create_collection(name=collection_name)
+        collection = await chroma_client.get_collection(collection_name)
         
         # Query by doc_id in metadata
-        results = collection.get(
+        results = await collection.get(
             where={"doc_id": doc_id},
             include=["documents", "metadatas", "embeddings"]
         )
