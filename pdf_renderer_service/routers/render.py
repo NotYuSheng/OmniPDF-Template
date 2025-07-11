@@ -1,8 +1,9 @@
 import pymupdf
 import time
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 import logging
 import httpx
+import requests
 from collections import defaultdict
 
 from shared_utils.s3_utils import (
@@ -22,11 +23,26 @@ async def pdf_render(doc_url: str,
 
     start_time = time.time()
 
-    async with httpx.AsyncClient() as client:
-        response = await client.get(json_url)
-        
-    if response.status_code == 200:
-        json_data = response.json()  # Convert JSON response to Python dict
+    # async with httpx.AsyncClient() as client:
+    #     response = await client.get(json_url)
+
+    # if response.status_code != 200:
+    #     logger.error(f"❌ Failed to fetch JSON: {response.status_code} - {response.text}")
+    #     raise HTTPException(status_code=500, detail="Failed to fetch JSON file from URL")
+
+    # json_data = response.json()  # Convert JSON response to Python dict
+
+
+
+    # with open(json_url, "r", encoding="utf-8") as f:
+    #     json_data = json.load(f)
+
+
+
+    response = requests.get(json_url)
+    response.raise_for_status()
+    json_data = response.json()
+
 
     pagewise_data = defaultdict(list)
 
@@ -43,7 +59,10 @@ async def pdf_render(doc_url: str,
                 })
     data = dict(pagewise_data)
 
-    doc = pymupdf.open(doc_url)
+    pdf_response = requests.get(doc_url)
+    pdf_response.raise_for_status()  # will raise if the PDF couldn't be fetched
+    doc = pymupdf.open(stream=pdf_response.content, filetype="pdf")
+
     for page in doc:
         print(f"{page.number}\n") 
         blocks = page.get_text("blocks")  # list of tuples: (x0, y0, x1, y1, "text", block_no, block_type)
