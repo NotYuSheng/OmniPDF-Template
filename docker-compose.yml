@@ -18,8 +18,12 @@ services:
       - "8001:8000"
     env_file:
       - ./chat_service/.env
-      
-  pdf_extraction:
+    depends_on:
+      - chromadb
+    volumes:
+      - my_vectordb:/app/my_vectordb
+
+  pdf_extraction_service:
     build:
       context: .
       dockerfile: ./pdf_extraction_service/Dockerfile
@@ -40,7 +44,9 @@ services:
       - ./embedder_service/.env
     depends_on:
       - chromadb
-  
+    volumes:
+      - my_vectordb:/app/my_vectordb
+
   redis:
     container_name: redis
     image: redis:7.4.4-alpine
@@ -50,9 +56,18 @@ services:
   chromadb:
     container_name: chromadb
     image: chromadb/chroma:1.0.13
-    expose:
-      - "5100"
-
+    ports:
+      - "5100:8000"
+    env_file:
+      - ./embedder_service/.env
+    volumes:
+      - my_vectordb:/app/my_vectordb
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://chromadb:8000/api/v1/heartbeat"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    
   minio:
     image: minio/minio
     container_name: minio
@@ -90,3 +105,9 @@ services:
 
 volumes:
   minio-data:
+  my_vectordb:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./my_vectordb
