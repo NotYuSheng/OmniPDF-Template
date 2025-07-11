@@ -1,9 +1,10 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, File, UploadFile
 import logging
 import httpx
 from collections import defaultdict
 from typing import Literal
-import json
+from models.bypass import BypassResponse
+import io
 
 from shared_utils.s3_utils import (
     upload_fileobj,
@@ -20,18 +21,28 @@ logger = logging.getLogger(__name__)
 @router.post("/{doc_id}")
 async def dump_files(
     doc_id: str,
-    json_path: str,
-    json_name: Literal["original", "translated"]
+    json_name: Literal["original", "translated"],
+    json_file: UploadFile = File(...),
     ):
 
-    if not json_path:
-        return {"error": "At least one of pdf_path or json_path must be provided."}
+    try:
+        key = f"{doc_id}/{json_name}.json"
 
-    if json_path:
-        try:
-            key = f"{doc_id}/{json_name}.json"
-            with open(json_path, "rb") as f:
-                upload_fileobj(f, key, "application/json")
-            print(f"✅ Uploaded {json_path} to s3")
-        except Exception as e:
-            print(f"❌ Upload failed: {e}")
+        # Read the uploaded file as bytes
+        file_content = await json_file.read()
+        file_like = io.BytesIO(file_content)  # Wrap in file-like object
+
+        # Upload to S3
+        upload_fileobj(file_like, key, "application/json")
+
+        logger.info(f"✅ Uploaded {key} to S3")
+
+        return BypassResponse(
+            doc_id=doc_id,
+            filename=key,
+            download_url=generate_presigned_url(key),
+        )
+
+    except Exception as e:
+        logger.warning(f"❌ Upload failed: {e}")
+        return {"error": "Error"}
