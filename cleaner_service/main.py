@@ -1,8 +1,5 @@
-from contextlib import asynccontextmanager
 import logging
-from fastapi import FastAPI
 
-from routers import health, cleaner
 from utils.cleaner import setup_redis_watcher_thread
 
 # Set up logger
@@ -12,19 +9,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+def main():
     # load the redis watcher
-    _, watcher, watcher_thread = await setup_redis_watcher_thread()
+    watcher_thread = setup_redis_watcher_thread()
     logger.info(f"{watcher_thread}")
-    yield
+    watcher_thread.join()
     # stop the watcher
     watcher_thread.stop()
     logger.info("Stopped well")
 
 
-app = FastAPI(root_path="/cleaner", lifespan=lifespan)
-# app = FastAPI(root_path="/cleaner")
-
-app.include_router(health.router)
-app.include_router(cleaner.router)
+if __name__ == "__main__":
+    main()

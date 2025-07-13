@@ -8,14 +8,17 @@ from shared_utils.s3_utils import delete_file
 
 logger = logging.getLogger(__name__)
 
-# UNABLE TO HANDLE srem AND OTHERS DUE TO ONLY HAVING EVENT AND KEY INFO
+client = Redis.from_url(config.redis_url)
+pubsub = client.pubsub()
 
+# UNABLE TO HANDLE srem AND OTHERS DUE TO ONLY HAVING EVENT AND KEY INFO
 REMOVAL_EVENTS = ["del", "expired"]
 ADDITION_EVENTS = ["new"]
 
 
 def EMPTY_FUNCTION(x):
     pass
+
 
 def clean_redis_key(key: str):
     logger.info(f"deleting redis {key}")
@@ -32,9 +35,11 @@ def clean_s3_files(key: str):
             delete_file(doc_key)
     del redis_set_store[key]
 
+
 def clean_s3_file(key: str):
     logger.info(f"deleting {key}")
     delete_file(key)
+
 
 def clean_chromadb(key):
     pass
@@ -61,7 +66,9 @@ addition_prefix_callback_dict = {"Session_Files": setup_session_expiry_timer}
 
 
 def event_handler(msg):
-    logger.info(f'handler -- {msg["type"]} {msg['pattern']}) from {msg["channel"]}: {msg["data"]}')
+    logger.info(
+        f"handler -- {msg['type']} {msg['pattern']}) from {msg['channel']}: {msg['data']}"
+    )
     if msg["type"] != "pmessage":
         return
     msg_origin = msg["channel"]
@@ -69,7 +76,7 @@ def event_handler(msg):
         msg_data: str = msg["data"]
         flag, key = msg_data.split(SEPERATOR, maxsplit=1)
         # (deletion_prefix_callback_dict[flag])(key)
-        deletion_prefix_callback_dict.get(flag, lambda x: None)(key)
+        deletion_prefix_callback_dict.get(flag, EMPTY_FUNCTION)(key)
 
     # if any(event in msg_origin for event in ADDITION_EVENTS):
     #     msg_data: str = msg["data"]
@@ -78,21 +85,19 @@ def event_handler(msg):
     #     addition_prefix_callback_dict.get(prefix, lambda x: None)(msg_data)
 
 
-async def setup_redis_watcher_thread():
-    client = Redis.from_url(config.redis_url)
+def setup_redis_watcher_thread():
     # resp = client.config_set("notify-keyspace-events", "KEA")
     client.config_set("notify-keyspace-events", "Egsxn")
-    pubsub = client.pubsub()
     sub_key = "__key*__:*"
     pubsub.psubscribe(**{sub_key: event_handler})
     logger.info(pubsub.patterns)
     logger.info(pubsub.channels)
     logger.info("Competed setup")
-    return client, pubsub, pubsub.run_in_thread()
+    return pubsub.run_in_thread()
 
 
 if __name__ == "__main__":
-    pubsub = setup_redis_watcher_thread()
+    # pubsub = setup_redis_watcher_thread()
     # pubsub.run_in_thread()
     # OR
     logger.info("setup complte")

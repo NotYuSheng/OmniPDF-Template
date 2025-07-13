@@ -19,4 +19,4 @@ COPY cleaner_service ./cleaner_service
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "PYTHONPATH=/app/cleaner_service uvicorn cleaner_service.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "python3 cleaner_service/main.py"]
