@@ -20,7 +20,7 @@ from shared_utils.redis import RedisSetWithFlagExpiry
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 logger = logging.getLogger(__name__)
-redis_image_sets = RedisSetWithFlagExpiry(prefix="ImageFiles:", flag_prefix="S3Key:", default_expiry=timedelta(hours=1))
+redis_image_sets = RedisSetWithFlagExpiry(prefix="ImageFiles", flag_prefix="S3Key", default_expiry=timedelta(hours=1))
 
 def process_pdf(doc_id: str, presign_url: str, img_scale: float = 2.0):
     start_time = time.time()

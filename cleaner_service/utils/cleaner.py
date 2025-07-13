@@ -2,8 +2,7 @@ import logging
 
 from redis import Redis
 
-from shared_utils.ttl_utils import SEPERATOR
-from shared_utils.redis import config, RedisStringStorage, RedisSetStorage
+from shared_utils.redis import config, RedisStringStorage, RedisSetStorage, SEPERATOR
 from shared_utils.s3_utils import delete_file
 
 logger = logging.getLogger(__name__)

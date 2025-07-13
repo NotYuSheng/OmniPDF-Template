@@ -11,8 +11,8 @@ import shared_utils.redis
 
 
 SESSION_COOKIE_NAME: str = "OmniPDFSession"
-SESSION_REDIS_PREFIX = "Session_Files:"
-SESSION_FLAG_PREFIX = "SessionHeader:"
+SESSION_REDIS_PREFIX = "Session_Files"
+SESSION_FLAG_PREFIX = "SessionHeader"
 
 class SessionStorage(shared_utils.redis.RedisSetWithFlagExpiry):
     def __init__(self, redis_client=None, prefix=SESSION_REDIS_PREFIX, flag_prefix=SESSION_FLAG_PREFIX, default_expiry=timedelta(days=1)):
@@ -20,7 +20,7 @@ class SessionStorage(shared_utils.redis.RedisSetWithFlagExpiry):
 
     def generate_session(self) -> str:
         session_id = uuid4().hex
-        while not self.client.set(SESSION_FLAG_PREFIX+ SESSION_REDIS_PREFIX + session_id, 1, ex= self.flag_expiry, nx=True):
+        while not self.client.set(self.flag_prefixed(session_id), 1, ex= self.flag_expiry, nx=True):
             session_id = uuid4().hex
         return session_id
 
