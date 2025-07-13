@@ -14,39 +14,15 @@ SESSION_COOKIE_NAME: str = "OmniPDFSession"
 SESSION_REDIS_PREFIX = "Session_Files:"
 SESSION_FLAG_PREFIX = "SessionHeader:"
 
-
-class SessionStorage(shared_utils.redis.RedisSetStorage):
-    def __init__(self, redis_client=None, prefix=SESSION_REDIS_PREFIX):
-        super().__init__(redis_client, prefix, default_expiry=None)
-        self.flag_expiry = timedelta(days=1)
-
-    def generate_session2(self) -> str:
-        session_id = uuid4().hex
-        while session_id in self:
-            session_id = uuid4().hex
-        # create an empty list
-        self.add(session_id, "")
-        return session_id
+class SessionStorage(shared_utils.redis.RedisSetWithFlagExpiry):
+    def __init__(self, redis_client=None, prefix=SESSION_REDIS_PREFIX, flag_prefix=SESSION_FLAG_PREFIX, default_expiry=timedelta(days=1)):
+        super().__init__(redis_client, prefix, flag_prefix, default_expiry)
 
     def generate_session(self) -> str:
         session_id = uuid4().hex
         while not self.client.set(SESSION_FLAG_PREFIX+ SESSION_REDIS_PREFIX + session_id, 1, ex= self.flag_expiry, nx=True):
             session_id = uuid4().hex
         return session_id
-    
-    def __delitem__(self, key):
-        self.client.delete(SESSION_FLAG_PREFIX+ SESSION_REDIS_PREFIX + key)
-    
-    def __contains__(self, key):
-        return self.client.exists(SESSION_FLAG_PREFIX+ SESSION_REDIS_PREFIX + key)
-    
-    def add(self, key, value):
-        self.pipeline.expire(SESSION_FLAG_PREFIX+ SESSION_REDIS_PREFIX + key, self.flag_expiry)
-        return super().add(key, value)
-    
-    def remove(self, key, value):
-        self.pipeline.expire(SESSION_FLAG_PREFIX + key, self.flag_expiry)
-        return super().remove(key, value)
 
 def get_session_storage() -> Generator[SessionStorage]:
     storage = SessionStorage()
