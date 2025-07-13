@@ -83,6 +83,14 @@ class RedisSetStorage(RedisBase):
         members = self.pipeline.execute()[-1]
         return members
 
+    def __setitem__(self, key: str, values: set):
+        if not isinstance(values, set):
+            raise ValueError(message="only sets whould be assigned")
+        self.pipeline.delete(self.prefix + key)
+        for value in values:
+            self.pipeline.sadd(self.prefix + key, value)
+        self.pipeline.execute()
+
     def add(self, key: str, value: str):
         self.pipeline.sadd(self.prefix + key, value)
         if self.default_expiry is not None:
@@ -109,6 +117,45 @@ class RedisSimpleFileFlag(RedisStringStorage):
     def clear(self, key):
         del self[key]
 
+
+class RedisSetWithFlagExpiry(RedisSetStorage):
+    # Do not use unless a clean up is set
+    def __init__(
+        self,
+        redis_client=None,
+        prefix="",
+        flag_prefix="Set_Flag:",
+        default_expiry=config.expire_time,
+    ):
+        super().__init__(redis_client, prefix, None)
+        self.flag_expiry = default_expiry
+        self.flag_prefix = flag_prefix
+
+    def __delitem__(self, key):
+        self.client.delete(self.flag_prefix + self.prefix + key)
+
+    def __contains__(self, key):
+        return self.client.exists(self.flag_prefix + self.prefix + key)
+
+    def __getitem__(self, key):
+        self.pipeline.getex(self.flag_prefix + self.prefix + key, ex=self.flag_expiry)
+        return super().__getitem__(key)
+    
+    def __setitem__(self, key, values):
+        if key not in self:
+            self.init(key)
+        return super().__setitem__(key, values)
+    
+    def init(self, key):
+        self.client.set(self.flag_prefix + self.prefix + key, 1, ex=self.flag_expiry)
+
+    def add(self, key, value):
+        self.pipeline.expire(self.flag_prefix + self.prefix + key, self.flag_expiry)
+        return super().add(key, value)
+
+    def remove(self, key, value):
+        self.pipeline.expire(self.flag_prefix + self.prefix + key, self.flag_expiry)
+        return super().remove(key, value)
 
 
 def get_json_storage() -> Generator:
