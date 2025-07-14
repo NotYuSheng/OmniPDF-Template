@@ -9,7 +9,6 @@ import os
 import numpy as np
 from models.chat import ChatRequest, ChatResponse
 from models.rag_config import QwenRAGConfig, QwenPromptTemplates, QwenRAGOptimizer
-import chromadb
 
 router = APIRouter(prefix="/chat")
 
@@ -155,8 +154,6 @@ async def handle_chat(
     Handle incoming chat requests and return AI responses.
     """
     try:
-        # chroma_client = await chromadb.AsyncHttpClient(host=CHROMADB_HOST, port=CHROMADB_PORT)
-        # collection = await chroma_client.get_collection(chat_request.collection_name)
         logger.info(chat_request.collection_name)
 
         # results = collection.query(
