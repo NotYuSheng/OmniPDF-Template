@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 class Config:
     redis_url: str = getenv("REDIS_URL")
-    session_id_name: str = "OmniPDFSession"
     expire_time: timedelta = timedelta(hours=24)
 
 
@@ -41,7 +40,7 @@ class RedisBase:
         return self.client.exists(self.prefixed(key))
     
     def prefixed(self, key: str):
-        return self.prefix + SEPERATOR + key
+        return f"{self.prefix}{SEPERATOR}{key}" if self.prefix else key
 
 
 # Stores the data as string

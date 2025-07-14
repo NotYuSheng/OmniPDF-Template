@@ -20,13 +20,13 @@ def EMPTY_FUNCTION(x):
 
 def clean_redis_key(key: str):
     logger.info(f"deleting redis {key}")
-    redis_storage = RedisStringStorage()
+    redis_storage = RedisStringStorage(redis_client=client)
     del redis_storage[key]
 
 
 def clean_s3_files(key: str):
     logger.info(f"deleting s3 {key}")
-    redis_set_store = RedisSetStorage()
+    redis_set_store = RedisSetStorage(redis_client=client)
     for doc_key in redis_set_store[key]:
         if doc_key:
             logger.info(f"deleting {doc_key}")
