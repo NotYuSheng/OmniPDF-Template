@@ -23,7 +23,7 @@ async def pdf_render(doc_url: str,
     response.raise_for_status()
     json_data = response.json()
 
-    pagewise_data = defaultdict(list)
+    transtext_data = defaultdict(list)
 
     texts = json_data.get("docling", {}).get("texts", [])
     for text_item in texts:
@@ -32,11 +32,31 @@ async def pdf_render(doc_url: str,
             page_no = prov.get("page_no")
             bbox = prov.get("bbox")
             if page_no is not None and bbox:
-                pagewise_data[page_no].append({
+                transtext_data[page_no].append({
                     "translated_text": translated,
                     "bbox": bbox
                 })
-    data = dict(pagewise_data)
+    data = dict(transtext_data)
+
+
+
+    ### Table handler ###
+    trans_table_data = defaultdict(list)
+
+    tables = json_data.get("docling", {}).get("tables", [])
+    for table in tables:
+        translated = text_item.get("translated_text", "")
+        for prov in text_item.get("prov", []):
+            page_no = prov.get("page_no")
+            bbox = prov.get("bbox")
+            if page_no is not None and bbox:
+                transtext_data[page_no].append({
+                    "translated_text": translated,
+                    "bbox": bbox
+                })
+    data = dict(transtext_data)
+
+
 
     pdf_response = requests.get(doc_url)
     pdf_response.raise_for_status()

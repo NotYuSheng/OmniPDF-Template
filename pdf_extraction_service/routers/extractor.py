@@ -63,11 +63,9 @@ def process_pdf(doc_id: str, presign_url: str, img_scale: float = 2.0):
             else:
                 continue
             
-            pages = data.get("pages", {})
-            for page in pages.values():
-                image = page.get("image", {})
-                if isinstance(image, dict):
-                    image.pop("uri", None)
+        pages = data.get("pages", {})
+        for page in pages.values():
+            page.get("image", {}).pop("uri", None)
         
 
         job_data = {
