@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 # Use environment variable for ChromaDB path, with fallback
 # CHROMADB_PATH = os.getenv("PERSIST_DIRECTORY", "/app/my_vectordb")
 # CHROMADB_URL = os.getenv("CHROMADB_URL")
-CHROMADB_HOST = os.getenv("CHROMADB_HOST")
-CHROMADB_PORT = os.getenv("CHROMADB_PORT")
+CHROMADB_HOST = os.getenv("CHROMADB_HOST", "chromadb")
+CHROMADB_PORT = os.getenv("CHROMADB_PORT", "8000")
 
 # In-memory ChromaDB instance (data stored in memory)
 # chroma_client = chromadb.EphemeralClient()
