@@ -88,7 +88,7 @@ class RedisSetStorage(RedisBase):
 
     def __setitem__(self, key: str, values: set):
         if not isinstance(values, set):
-            raise ValueError(message="only sets whould be assigned")
+            raise ValueError("Set Expected. Right Hand Value should be a set.")
         self.pipeline.delete(self.prefixed(key))
         for value in values:
             self.pipeline.sadd(self.prefixed(key), value)
