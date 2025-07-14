@@ -7,7 +7,6 @@ import uuid
 import os
 from models.embed import ProcessingConfig, DataRequest
 from models.helper import get_chunking_model, get_embedding_model
-from shared_utils.chroma_client import get_chroma_client
 # from unstructured.partition.pdf import partition_pdf
 # from unstructured.staging.base import elements_to_json
 # import numpy as np
@@ -125,7 +124,7 @@ async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: Processin
             logger.info("Getting collection...")
             logger.info(f"Host: {CHROMADB_HOST}")
             logger.info(f"Port: {CHROMADB_PORT}")
-            chroma_client = await get_chroma_client()
+            chroma_client = await chromadb.AsyncHttpClient(host=CHROMADB_HOST, port=CHROMADB_PORT)
             collection = await chroma_client.get_or_create_collection(name=config.collection_name, embedding_function=emb_model)
             logger.info(f"Using existing collection: {config.collection_name}")
         except Exception as e:
@@ -248,7 +247,7 @@ async def pdf_embedder_service(request: DataRequest):
 async def verify_document_embedding(doc_id: str, collection_name: str):
     """Verify if a document's data chunks have been successfully embedded into ChromaDB"""
     try:
-        chroma_client = await get_chroma_client()
+        chroma_client = await chromadb.AsyncHttpClient(host=CHROMADB_HOST, port=CHROMADB_PORT)
         
         if chroma_client is None:
             raise HTTPException(status_code=500, detail="ChromaDB client not initialized")
