@@ -12,7 +12,7 @@ pubsub = redis_store.client.pubsub()
 REMOVAL_EVENTS = ["del", "expired"]
 
 
-def EMPTY_FUNCTION(_):
+def empty_function(_):
     pass
 
 
@@ -40,7 +40,7 @@ def clean_chromadb(key):
     pass
 
 
-deletion_prefix_callback_dict = {
+DELETION_PREFIX_CALLBACK_DICT = {
     "S3Key": clean_s3_files,
     "SessionHeader": clean_s3_files,
     "S3_File": clean_s3_file,
@@ -60,7 +60,7 @@ def event_handler(msg):
         msg_data: str = msg["data"]
         try:
             flag, key = msg_data.split(SEPERATOR, maxsplit=1)
-            deletion_prefix_callback_dict.get(flag, EMPTY_FUNCTION)(key)
+            DELETION_PREFIX_CALLBACK_DICT.get(flag, empty_function)(key)
         except ValueError:
             logger.warning(f"Could not split message data, malformed key: {msg_data}")
 
