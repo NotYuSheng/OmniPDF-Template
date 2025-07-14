@@ -1,4 +1,5 @@
 import logging
+import signal
 
 from utils.cleaner import setup_redis_watcher_thread
 
@@ -13,10 +14,16 @@ def main():
     # load the redis watcher
     watcher_thread = setup_redis_watcher_thread()
     logger.info(f"{watcher_thread}")
+
+    # Setup Graceful shutdown
+    def exit_gracefully(signum, frame):
+        watcher_thread.stop()
+    signal.signal(signal.SIGINT, exit_gracefully)
+    signal.signal(signal.SIGTERM, exit_gracefully)
+
+    # Wait till the thread is no longer running
     watcher_thread.join()
-    # stop the watcher
-    watcher_thread.stop()
-    logger.info("Stopped well")
+    logger.info("Cleaner stopped gracefully")
 
 
 if __name__ == "__main__":
