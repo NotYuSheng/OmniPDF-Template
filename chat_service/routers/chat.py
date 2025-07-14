@@ -3,6 +3,7 @@ from fastapi.concurrency import run_in_threadpool
 from openai import OpenAI, APIError
 from typing import List, Dict, Any
 from shared_utils.openai_client import get_openai_client
+from shared_utils.chroma_client import get_chroma_client
 import logging
 import os
 import numpy as np
@@ -21,7 +22,7 @@ qwen_optimizer = QwenRAGOptimizer()
 
 _OPENAI_MODEL_DEFAULT = "qwen2.5-0.5b-instruct"
 OPENAI_MODEL_NAME = os.getenv("OPENAI_MODEL", _OPENAI_MODEL_DEFAULT)
-CHROMADB_URL = os.getenv("CHROMADB_URL", "http://chromadb:5100")
+# CHROMADB_URL = os.getenv("CHROMADB_URL", "http://chromadb:5100")
 CHROMADB_HOST = os.getenv("CHROMADB_HOST")
 CHROMADB_PORT = os.getenv("CHROMADB_PORT")
 
@@ -99,7 +100,7 @@ async def perform_rag_query(
     Perform complete RAG query: retrieve relevant chunks and generate response
     """
     try:
-        chroma_client = await chromadb.AsyncHttpClient(host=CHROMADB_HOST, port=CHROMADB_PORT)
+        chroma_client = await get_chroma_client()
         # Step 1: Retrieve relevant chunks from ChromaDB
         collection = await chroma_client.get_collection(collection_name)
         
@@ -137,7 +138,6 @@ async def perform_rag_query(
         user_prompt = prompt_templates.format_user_prompt(query, context, query_type)
         logger.info(f"System prompt: {system_prompt}")
         logger.info(f"User prompt: {user_prompt}")
-
 
         return user_prompt, optimized_chunks, system_prompt
         
