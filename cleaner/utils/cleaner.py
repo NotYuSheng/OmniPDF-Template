@@ -1,32 +1,29 @@
 import logging
 
-from redis import Redis
-
-from shared_utils.redis import config, RedisStringStorage, RedisSetStorage, SEPERATOR
+from shared_utils.redis import RedisBase, RedisSetStorage, SEPERATOR
 from shared_utils.s3_utils import delete_file
 
 logger = logging.getLogger(__name__)
 
-client = Redis.from_url(config.redis_url)
-pubsub = client.pubsub()
+redis_store = RedisBase()
+pubsub = redis_store.client.pubsub()
 
 # UNABLE TO HANDLE srem AND OTHERS DUE TO ONLY HAVING EVENT AND KEY INFO
 REMOVAL_EVENTS = ["del", "expired"]
 
 
-def EMPTY_FUNCTION(x):
+def EMPTY_FUNCTION(_):
     pass
 
 
 def clean_redis_key(key: str):
     logger.info(f"deleting redis {key}")
-    redis_storage = RedisStringStorage(redis_client=client)
-    del redis_storage[key]
+    del redis_store[key]
 
 
 def clean_s3_files(key: str):
     logger.info(f"deleting s3 {key}")
-    redis_set_store = RedisSetStorage(redis_client=client)
+    redis_set_store = RedisSetStorage(redis_client=redis_store.client)
     for doc_key in redis_set_store[key]:
         if doc_key:
             logger.info(f"deleting {doc_key}")
@@ -69,7 +66,7 @@ def event_handler(msg):
 
 
 def setup_redis_watcher_thread():
-    client.config_set("notify-keyspace-events", "Egsx")
+    redis_store.client.config_set("notify-keyspace-events", "Egsx")
     sub_key = "__key*__:*"
     pubsub.psubscribe(**{sub_key: event_handler})
     logger.info(pubsub.patterns)
@@ -79,9 +76,9 @@ def setup_redis_watcher_thread():
 
 
 if __name__ == "__main__":
-    client.config_set("notify-keyspace-events", "Egsx")
+    redis_store.client.config_set("notify-keyspace-events", "Egsx")
     sub_key = "__key*__:*"
     pubsub.psubscribe(**{sub_key: event_handler})
-    logger.info("setup complte")
+    logger.info("setup complete")
     for msg in pubsub.listen():
         pass
