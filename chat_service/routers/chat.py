@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.concurrency import run_in_threadpool
 from openai import OpenAI, APIError
 from typing import List, Dict, Any
-from shared_utils.client import get_openai_client
+from shared_utils.openai_client import get_openai_client
 import logging
 import os
 import numpy as np
