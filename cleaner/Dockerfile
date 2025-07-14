@@ -17,6 +17,4 @@ COPY shared_utils ./cleaner/shared_utils
 # Copy cleaner folder from root context into /app/cleaner
 COPY cleaner ./cleaner
 
-EXPOSE 8000
-
-CMD ["sh", "-c", "python3 cleaner/main.py"]
+CMD ["python3", "cleaner/main.py"]
