@@ -40,7 +40,7 @@ class RedisBase:
     def __contains__(self, key: str):
         return self.client.exists(self.prefixed(key))
     
-    def prefixed(self, key:str):
+    def prefixed(self, key: str):
         return self.prefix + SEPERATOR + key
 
 
@@ -114,10 +114,10 @@ class RedisSimpleFileFlag(RedisStringStorage):
     def __init__(self, redis_client=None, prefix="S3_File:", default_expiry = timedelta(hours=1)):
         super().__init__(redis_client, prefix, default_expiry)
 
-    def set(self, key):
+    def set(self, key: str):
         self[key] = 1
 
-    def clear(self, key):
+    def clear(self, key: str):
         del self[key]
 
 
@@ -134,29 +134,29 @@ class RedisSetWithFlagExpiry(RedisSetStorage):
         self.flag_expiry = default_expiry
         self.flag_prefix = flag_prefix
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str):
         self.client.delete(self.flag_prefixed(key))
 
-    def __contains__(self, key):
+    def __contains__(self, key: str):
         return self.client.exists(self.flag_prefixed(key))
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str):
         self.pipeline.getex(self.flag_prefixed(key), ex=self.flag_expiry)
         return super().__getitem__(key)
     
-    def __setitem__(self, key, values):
+    def __setitem__(self, key: str, values: set):
         if key not in self:
             self.init(key)
-        return super().__setitem__(key, values)
+        super().__setitem__(key, values)
     
-    def init(self, key):
+    def init(self, key: str):
         self.client.set(self.flag_prefixed(key), 1, ex=self.flag_expiry)
 
-    def add(self, key, value):
+    def add(self, key: str, value: str):
         self.pipeline.expire(self.flag_prefixed(key), self.flag_expiry)
         return super().add(key, value)
 
-    def remove(self, key, value):
+    def remove(self, key: str, value: str):
         self.pipeline.expire(self.flag_prefixed(key), self.flag_expiry)
         return super().remove(key, value)
 

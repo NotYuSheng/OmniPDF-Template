@@ -20,7 +20,7 @@ class SessionStorage(shared_utils.redis.RedisSetWithFlagExpiry):
 
     def generate_session(self) -> str:
         session_id = uuid4().hex
-        while not self.client.set(self.flag_prefixed(session_id), 1, ex= self.flag_expiry, nx=True):
+        while not self.client.set(self.flag_prefixed(session_id), 1, ex=self.flag_expiry, nx=True):
             session_id = uuid4().hex
         return session_id
 
