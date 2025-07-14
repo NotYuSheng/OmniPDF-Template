@@ -61,8 +61,11 @@ def event_handler(msg):
     msg_origin = msg["channel"]
     if any(event in msg_origin for event in REMOVAL_EVENTS):
         msg_data: str = msg["data"]
-        flag, key = msg_data.split(SEPERATOR, maxsplit=1)
-        deletion_prefix_callback_dict.get(flag, EMPTY_FUNCTION)(key)
+        try:
+            flag, key = msg_data.split(SEPERATOR, maxsplit=1)
+            deletion_prefix_callback_dict.get(flag, EMPTY_FUNCTION)(key)
+        except ValueError:
+            logger.warning(f"Could not split message data, malformed key: {msg_data}")
 
 
 def setup_redis_watcher_thread():
