@@ -4,34 +4,15 @@ from fastapi import APIRouter, HTTPException
 from typing import List, Dict, Any
 import logging
 import uuid
-import os
 from models.embed import ProcessingConfig, DataRequest
 from models.helper import get_chunking_model, get_embedding_model
 from shared_utils.chroma_client import get_chroma_client
-# from unstructured.partition.pdf import partition_pdf
-# from unstructured.staging.base import elements_to_json
-# import numpy as np
 
 # from langchain.text_splitter import MarkdownTextSplitter
 from langchain_core.documents import Document
 
-# ChromaDB
-import chromadb
-# from chromadb.utils import embedding_functions
-
 router = APIRouter()
 logger = logging.getLogger(__name__)
-
-# Use environment variable for ChromaDB path, with fallback
-# CHROMADB_PATH = os.getenv("PERSIST_DIRECTORY", "/app/my_vectordb")
-# CHROMADB_URL = os.getenv("CHROMADB_URL")
-CHROMADB_HOST = os.getenv("CHROMADB_HOST", "chromadb")
-CHROMADB_PORT = os.getenv("CHROMADB_PORT", "8000")
-
-# In-memory ChromaDB instance (data stored in memory)
-# chroma_client = chromadb.EphemeralClient()
-# Persistent ChromaDB instance (data stored on disk)
-# chroma_client = chromadb.PersistentClient(path=CHROMADB_PATH)
 
 
 async def data_chunking(request:DataRequest, chunker) -> List[Dict[str, Any]]:
@@ -123,8 +104,6 @@ async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: Processin
     try:
         try:
             logger.info("Getting collection...")
-            logger.info(f"Host: {CHROMADB_HOST}")
-            logger.info(f"Port: {CHROMADB_PORT}")
             chroma_client = await get_chroma_client()
             collection = await chroma_client.get_or_create_collection(name=config.collection_name, embedding_function=emb_model)
             logger.info(f"Using existing collection: {config.collection_name}")
@@ -152,58 +131,9 @@ async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: Processin
             "total_chunks_added": len(chunk_data)
         }
 
-        # Part of the Chat Service
-        # results = collection.query(
-        #     query_texts=["They keep moving."],
-        #     n_results=min(2, len(chunk_data)),
-        #     include=["distances", "documents",  "metadatas", "embeddings"]
-        # )
-
-        # serialized_results = serialize_chroma_results(results)
-
-        # return {
-        #     "collection_name": config.collection_name,
-        #     "total_chunks_added": len(chunk_data),
-        #     "sample_query_results": serialized_results
-        # }
-
     except Exception as e:
         logger.error(f"Embedding process failed: {e}")
         raise HTTPException(status_code=500, detail="Embedding failed")
-
-
-# def serialize_chroma_results(results: Dict[str, Any]) -> Dict[str, Any]:
-#     """Convert ChromaDB query results to JSON-serializable format"""
-
-#     serialized = {}
-    
-#     for key, value in results.items():
-#         if key == 'embeddings' and value is not None:
-#             # Convert numpy arrays to lists for embeddings
-#             if isinstance(value, list) and len(value) > 0:
-#                 if isinstance(value[0], np.ndarray):
-#                     serialized[key] = [emb.tolist() for emb in value]
-#                 elif isinstance(value[0], list):
-#                     # Already in list format
-#                     serialized[key] = value
-#                 else:
-#                     serialized[key] = value
-#             else:
-#                 serialized[key] = value
-#         elif key == 'distances' and value is not None:
-#             # Handle distances (might be numpy arrays)
-#             if isinstance(value, list) and len(value) > 0:
-#                 if isinstance(value[0], np.ndarray):
-#                     serialized[key] = [dist.tolist() for dist in value]
-#                 else:
-#                     serialized[key] = value
-#             else:
-#                 serialized[key] = value
-#         else:
-#             # Handle other fields normally
-#             serialized[key] = value
-    
-#     return serialized
 
 
 @router.post("/embed")
