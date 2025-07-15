@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.concurrency import run_in_threadpool
 from openai import OpenAI, APIError
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from shared_utils.openai_client import get_openai_client
 from shared_utils.chroma_client import get_chroma_client
 import logging
@@ -40,7 +40,8 @@ def prepare_retrieval_results(results: Dict[str, Any]) -> List [Dict[str, Any]]:
             'content': doc,
             'chunk_id': ids[i] if i < len(ids) else f"chunk_{i}",
             'similarity_score': 1 - distances[i] if i < len(distances) else 0.0,  # Convert distance to similarity
-            'metadata': metadatas[i] if i < len(metadatas) else {}
+            'metadata': metadatas[i] if i < len(metadatas) else {},
+            'doc_id': metadatas[i].get('doc_id') if i < len(metadatas) and metadatas[i] else None  # Extract doc_id from metadata
         }
         chunks.append(chunk)
     
@@ -54,8 +55,10 @@ def prepare_retrieval_results(results: Dict[str, Any]) -> List [Dict[str, Any]]:
 async def perform_rag_query(
     query: str, 
     collection_name: str, 
+    doc_id: Optional[str] = None,
     top_k: int = 5,
-    query_type: str = "general"
+    query_type: str = "general",
+    enable_reranking: bool = True
 ) -> tuple[str, List[Dict[str, Any]]]:
     """
     Perform complete RAG query: retrieve relevant chunks and generate response
@@ -65,11 +68,19 @@ async def perform_rag_query(
         # Step 1: Retrieve relevant chunks from ChromaDB
         collection = await chroma_client.get_collection(collection_name)
         
-        results = await collection.query(
-            query_texts=[query],
-            n_results=top_k,
-            include=["distances", "documents", "metadatas", "embeddings"]
-        )
+        query_params = {
+            "query_texts": [query],
+            "n_results": top_k,
+            "include": ["distances", "documents", "metadatas", "embeddings"]
+        }
+
+        if doc_id:
+            query_params["where"] = {"doc_id": doc_id}
+            logger.info(f"Filtering results to document ID: {doc_id}")
+        else:
+            logger.info("Searching across all documents in collection")
+
+        results = await collection.query(**query_params)
         
         # Step 2: Process retrieval results
         chunks = prepare_retrieval_results(results)
@@ -78,23 +89,27 @@ async def perform_rag_query(
             logger.warning(f"No relevant chunks found for query: {query}")
             return "I couldn't find any relevant information in the document collection to answer your question.", []
         
-        # Step 3: Optimize chunks for Qwen-2.5
+        # Step 3: Optional reranking for better results across multiple documents
+        if enable_reranking and len(chunks) > 1:
+            chunks = await rerank_chunks(chunks, query)
+        
+        # Step 4: Optimize chunks for Qwen-2.5
         optimized_chunks, context = qwen_optimizer.optimize_chunks_for_qwen(
             chunks, 
             max_context_length=qwen_config.max_context_length
         )
 
-        logger.info(f"Relevant chunks: f{optimized_chunks}")
-        
+        logger.info(f"Relevant chunks from {len(set(chunk.get('doc_id') for chunk in optimized_chunks if chunk.get('doc_id')))} documents")
         logger.info(f"Using {len(optimized_chunks)} chunks for context (total length: {len(context)} chars)")
         
         logger.info(f"Query type: {query_type}")
-        # Step 4: Auto-detect query type if not provided
+
+        # Step 5: Auto-detect query type if not provided
         if query_type == "general":
             query_type = qwen_optimizer.detect_query_type(query)
             logger.info(f"Auto-detected query type: {query_type}")
         
-        # Step 5: Prepare system and user prompts
+        # Step 6: Prepare system and user prompts
         system_prompt = prompt_templates.get_system_prompt(query_type)
         user_prompt = prompt_templates.format_user_prompt(query, context, query_type)
         logger.info(f"System prompt: {system_prompt}")
@@ -104,7 +119,45 @@ async def perform_rag_query(
         
     except Exception as e:
         logger.error(f"RAG query failed: {e}")
-        raise HTTPException(status_code=500, detail=f"RAG query failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="RAG query failed")
+
+
+async def rerank_chunks(chunks: List[Dict[str, Any]], query: str) -> List[Dict[str, Any]]:
+    """
+    Simple reranking based on document diversity and relevance
+    """
+    try:
+        # Group chunks by document
+        doc_chunks = {}
+        for chunk in chunks:
+            doc_id = chunk.get('doc_id', 'unknown')
+            if doc_id not in doc_chunks:
+                doc_chunks[doc_id] = []
+            doc_chunks[doc_id].append(chunk)
+        
+        # Sort chunks within each document by similarity score
+        for doc_id in doc_chunks:
+            doc_chunks[doc_id].sort(key=lambda x: x['similarity_score'], reverse=True)
+        
+        # Interleave chunks from different documents to ensure diversity
+        reranked_chunks = []
+        max_chunks_per_doc = max(1, len(chunks) // max(1, len(doc_chunks)))
+        
+        # Take top chunks from each document
+        for doc_id, doc_chunk_list in doc_chunks.items():
+            selected_chunks = doc_chunk_list[:max_chunks_per_doc]
+            reranked_chunks.extend(selected_chunks)
+        
+        # Sort final list by similarity score
+        reranked_chunks.sort(key=lambda x: x['similarity_score'], reverse=True)
+        
+        logger.info(f"Reranked {len(chunks)} chunks from {len(doc_chunks)} documents")
+        return reranked_chunks
+        
+    except Exception as e:
+        logger.warning(f"Reranking failed, using original order: {e}")
+        return chunks
+
 
 
 @router.post("/", status_code=201, response_model=ChatResponse)
@@ -122,8 +175,10 @@ async def handle_chat(
         user_prompt, relevant_chunks, system_prompt = await perform_rag_query(
             query=chat_request.message,
             collection_name=chat_request.collection_name,
+            doc_id=chat_request.id,
             top_k=chat_request.top_k,
-            query_type=chat_request.query_type or "general"
+            query_type=chat_request.query_type or "general",
+            enable_reranking=qwen_config.enable_reranking
         )
         
         # Prepare messages for Qwen-2.5
@@ -173,15 +228,21 @@ async def handle_chat(
         raw_response, 
         chat_request.message
     )
+
+    # Analyze document diversity in results
+    doc_ids = set(chunk.get('doc_id') for chunk in relevant_chunks if chunk.get('doc_id'))
     
     # Prepare metadata for response
     metadata = {
         "query_type": chat_request.query_type or qwen_optimizer.detect_query_type(chat_request.message),
         "chunks_used": len(relevant_chunks),
+        "documents_searched": len(doc_ids) if doc_ids else 0,
+        "document_ids": list(doc_ids) if doc_ids else [],
         "total_context_length": len(user_prompt),
         "model_used": OPENAI_MODEL_NAME,
         "collection_name": chat_request.collection_name,
-        "generation_params": qwen_config.generation_params
+        "generation_params": qwen_config.generation_params,
+        "reranking_enabled": qwen_config.enable_reranking
     }
     
     # Return structured response
