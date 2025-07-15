@@ -197,3 +197,4 @@ class QwenRAGOptimizer:
             cleaned_response = cleaned_response.rstrip() + '.'
         
         return cleaned_response.strip()
+    
