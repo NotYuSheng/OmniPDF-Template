@@ -23,40 +23,6 @@ _OPENAI_MODEL_DEFAULT = "qwen2.5-0.5b-instruct"
 OPENAI_MODEL_NAME = os.getenv("OPENAI_MODEL", _OPENAI_MODEL_DEFAULT)
 
 
-def serialize_chroma_results(results: Dict[str, Any]) -> Dict[str, Any]:
-    """Convert ChromaDB query results to JSON-serializable format"""
-
-    serialized = {}
-    
-    for key, value in results.items():
-        if key == 'embeddings' and value is not None:
-            # Convert numpy arrays to lists for embeddings
-            if isinstance(value, list) and len(value) > 0:
-                if isinstance(value[0], np.ndarray):
-                    serialized[key] = [emb.tolist() for emb in value]
-                elif isinstance(value[0], list):
-                    # Already in list format
-                    serialized[key] = value
-                else:
-                    serialized[key] = value
-            else:
-                serialized[key] = value
-        elif key == 'distances' and value is not None:
-            # Handle distances (might be numpy arrays)
-            if isinstance(value, list) and len(value) > 0:
-                if isinstance(value[0], np.ndarray):
-                    serialized[key] = [dist.tolist() for dist in value]
-                else:
-                    serialized[key] = value
-            else:
-                serialized[key] = value
-        else:
-            # Handle other fields normally
-            serialized[key] = value
-    
-    return serialized
-
-
 def prepare_retrieval_results(results: Dict[str, Any]) -> List [Dict[str, Any]]:
     """Convert ChromaDB results to structured chunks for RAG"""
     chunks = []
@@ -153,14 +119,6 @@ async def handle_chat(
     try:
         logger.info(chat_request.collection_name)
 
-        # results = collection.query(
-        #     query_texts=[chat_request.message],
-        #     n_results=chat_request.top_k,
-        #     include=["distances", "documents",  "metadatas", "embeddings"]
-        # )
-
-        # serialized_results = serialize_chroma_results(results)
-
         # Perform RAG query to get context and relevant chunks
         user_prompt, relevant_chunks, system_prompt = await perform_rag_query(
             query=chat_request.message,
@@ -233,5 +191,3 @@ async def handle_chat(
         relevant_chunks=relevant_chunks,
         metadata=metadata
     )
-
-    # return {"response": first_choice.message.content}
