@@ -21,9 +21,6 @@ qwen_optimizer = QwenRAGOptimizer()
 
 _OPENAI_MODEL_DEFAULT = "qwen2.5-0.5b-instruct"
 OPENAI_MODEL_NAME = os.getenv("OPENAI_MODEL", _OPENAI_MODEL_DEFAULT)
-# CHROMADB_URL = os.getenv("CHROMADB_URL", "http://chromadb:5100")
-CHROMADB_HOST = os.getenv("CHROMADB_HOST")
-CHROMADB_PORT = os.getenv("CHROMADB_PORT")
 
 
 def serialize_chroma_results(results: Dict[str, Any]) -> Dict[str, Any]:
@@ -181,7 +178,6 @@ async def handle_chat(
             {
                 "role": "user", 
                 "content": user_prompt
-                # "content": chat_request.message
             }
         ]
 
