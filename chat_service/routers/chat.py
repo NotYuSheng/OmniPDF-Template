@@ -6,7 +6,6 @@ from shared_utils.openai_client import get_openai_client
 from shared_utils.chroma_client import get_chroma_client
 import logging
 import os
-import numpy as np
 from models.chat import ChatRequest, ChatResponse
 from models.rag_config import QwenRAGConfig, QwenPromptTemplates, QwenRAGOptimizer
 
