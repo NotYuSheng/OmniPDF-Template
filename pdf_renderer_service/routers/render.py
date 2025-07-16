@@ -4,6 +4,7 @@ import io
 import uuid
 import time
 import requests
+from PyPDF2 import PdfReader, PdfWriter
 from collections import defaultdict
 from fastapi import APIRouter, HTTPException
 from models.render import DocumentRendererResponse
@@ -26,28 +27,41 @@ async def pdf_render(doc_url: str,
     response.raise_for_status()
     json_data = response.json()
 
+    pdf_response = requests.get(doc_url)
+    pdf_response.raise_for_status()
+    doc = pymupdf.open(stream=pdf_response.content, filetype="pdf")
+
     trans_text_data = defaultdict(list)
 
     texts = json_data.get("docling", {}).get("texts", [])
+
     for text_item in texts:
         translated = text_item.get("translated_text", "")
+
         for prov in text_item.get("prov", []):
             page_no = prov.get("page_no")
             bbox = prov.get("bbox")
+
+            bbox["b"] = doc[page_no-1].rect[3] - bbox["b"]
+            bbox["t"] = doc[page_no-1].rect[3] - bbox["t"]
+
             if page_no is not None and bbox:
                 trans_text_data[page_no].append({
                     "translated_text": translated,
                     "bbox": bbox
                 })
 
-
+    ### This section is supposed to handle table rendering but has been excluded due to autoscaling issues
     tables = json_data.get("docling", {}).get("tables", [])
+
     for table in tables:
         table_cells = table.get("data", {}).get("table_cells", [])
         page_no = table.get("prov", [])[0].get("page_no")
+
         for cell in table_cells:
             translated = cell.get("translated_text")
             bbox = cell.get("bbox")
+
             if page_no is not None and bbox:
                 trans_text_data[page_no].append({
                     "translated_text": translated,
@@ -55,10 +69,6 @@ async def pdf_render(doc_url: str,
                 })
 
     data = dict(trans_text_data)
-
-    pdf_response = requests.get(doc_url)
-    pdf_response.raise_for_status()
-    doc = pymupdf.open(stream=pdf_response.content, filetype="pdf")
 
     for page in doc:
         logger.info(f"{page.number}\n") 
@@ -70,19 +80,12 @@ async def pdf_render(doc_url: str,
 
         page.apply_redactions()
         page.clean_contents()
-
         data_lst = data[page.number + 1]
         for trans_data in data_lst:
             trans_text = trans_data["translated_text"]
             bbox = trans_data['bbox']
 
-            y0 = (page.rect[3]- bbox["t"])
-            y1 = (page.rect[3]- bbox["b"])
-
-            top = min(y0, y1)
-            bottom = max(y0, y1)
-
-            coords = (bbox["l"], top, bbox["r"], bottom)
+            coords = (bbox["l"], bbox["t"], bbox["r"], bbox["b"])
 
             logger.info(f"Text: {trans_text}")
             logger.info(f"Bbox: {coords}")
@@ -97,19 +100,34 @@ async def pdf_render(doc_url: str,
                 logger.exception(e)  # full traceback
                 raise e  # optionally re-raise for FastAPI to return 500
 
-            
-    buffer = io.BytesIO()
-    doc.save(buffer, garbage=3, deflate=True)
-    buffer.seek(0)  # Reset buffer position
+    original_buffer = io.BytesIO()
+    doc.subset_fonts()
+    doc.save(original_buffer, garbage=4, deflate=True, clean=True)
+    original_buffer.seek(0)  # Reset buffer position
+
+    reader = PdfReader(original_buffer)
+    writer = PdfWriter()
+
+    for page in reader.pages:
+        writer.add_page(page)
+
+    # Write to a new BytesIO buffer
+    compressed_buffer = io.BytesIO()
+    writer.write(compressed_buffer)
+    compressed_buffer.seek(0)
+
+    file_size = len(compressed_buffer.getvalue())
 
     logger.info(f"Time to render document: {time.time() - start_time}")
+    logger.info(f"File size: {file_size / 1024:.2f} KB")
+    logger.info(f"File size: {file_size / (1024 * 1024):.2f} MB")
 
     doc_id = str(uuid.uuid4())
     key = f"{doc_id}/rendered.pdf"
 
     try:
         success = upload_fileobj(
-            buffer, key, content_type="application/pdf"
+            compressed_buffer, key, content_type="application/pdf"
         )
         if not success:
             raise HTTPException(status_code=500, detail="Failed to upload file to S3")
