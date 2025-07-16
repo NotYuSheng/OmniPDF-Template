@@ -16,11 +16,12 @@ router = APIRouter(prefix="/embed")
 logger = logging.getLogger(__name__)
 
 
-async def data_chunking(request:DataRequest, chunker) -> List[Dict[str, Any]]:
+async def data_chunking(request:DataRequest) -> List[Dict[str, Any]]:
     """Perform chunking / splitting of data via Semantic Chunking using LangChain's SemanticChunker,
     and reject by returning empty list if PDF document has no content"""
 
     logger.info("Starting chunking process...")
+    chunker = get_chunking_model(request.config)
 
     try:
 
@@ -97,16 +98,17 @@ async def data_chunking(request:DataRequest, chunker) -> List[Dict[str, Any]]:
         raise HTTPException(status_code=500, detail="Data chunking failed.")
 
 
-async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: ProcessingConfig, emb_model):
+async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: ProcessingConfig):
     """Embed data chunks of PDF document into ChromaDB"""
 
     logger.info("Starting embedding process...")
+    embedding_model = get_embedding_model(config.embedding_model)
 
     try:
         try:
             logger.info("Getting collection...")
             chroma_client = await get_chroma_client()
-            collection = await chroma_client.get_or_create_collection(name=config.collection_name, embedding_function=emb_model)
+            collection = await chroma_client.get_or_create_collection(name=config.collection_name, embedding_function=embedding_model)
             logger.info(f"Using existing collection: {config.collection_name}")
         except Exception as e:
             logger.error(f"Collection retrieval failed: {e}")
@@ -141,17 +143,17 @@ async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: Processin
 async def pdf_embedder_service(request: DataRequest):
     "Chunk up and embed data from PDF document into ChromaDB"
 
-    semantic_chunker = get_chunking_model(request.config)
-    embedding_model = get_embedding_model(request.config.embedding_model)
+    
+    
     
     try:
         # Extracted data has to be chunked up first before being embedded and stored into ChromaDB
-        chunk_data = await data_chunking(request, semantic_chunker)
+        chunk_data = await data_chunking(request)
 
         if not chunk_data:
             raise HTTPException(status_code=400, detail="No chunks were created from the input text") 
         
-        embed_results = await vectorize_chromadb(chunk_data, request.config, embedding_model)
+        embed_results = await vectorize_chromadb(chunk_data, request.config)
         
         return {
                 "status": "success",
@@ -212,3 +214,4 @@ async def verify_document_embedding(doc_id: str, collection_name: str):
     except Exception as e:
         logger.error(f"Document verification failed: {e}")
         raise HTTPException(status_code=500, detail="Document verification failed")
+    
