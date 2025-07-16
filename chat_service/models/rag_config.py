@@ -174,7 +174,7 @@ class QwenRAGOptimizer:
         return selected_chunks, "\n".join(context_parts)
     
     @staticmethod
-    def post_process_qwen_response(response: str, question: str) -> str:
+    def post_process_qwen_response(response: str) -> str:
         """Post-process Qwen-2.5 response for better formatting"""
         
         # Remove any potential repetition

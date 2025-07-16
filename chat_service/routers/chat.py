@@ -223,11 +223,7 @@ async def handle_chat(
         )
     
     # Post-process the response
-    raw_response = first_choice.message.content
-    processed_response = qwen_optimizer.post_process_qwen_response(
-        raw_response, 
-        chat_request.message
-    )
+    processed_response = qwen_optimizer.post_process_qwen_response(first_choice.message.content)
 
     # Analyze document diversity in results
     doc_ids = set(chunk.get('doc_id') for chunk in relevant_chunks if chunk.get('doc_id'))
