@@ -4,8 +4,6 @@ services:
       context: .
       dockerfile: ./pdf_processor_service/Dockerfile
     container_name: pdf_processor_service
-    ports:
-      - "8000:8000"
     env_file:
       - ./pdf_processor_service/.env
 
@@ -14,8 +12,6 @@ services:
       context: .
       dockerfile: ./chat_service/Dockerfile
     container_name: chat_service
-    ports:
-      - "8001:8000"
     env_file:
       - ./chat_service/.env
     depends_on:
@@ -26,8 +22,6 @@ services:
       context: .
       dockerfile: ./pdf_extraction_service/Dockerfile
     container_name: pdf_extraction_service
-    ports:
-      - "8002:8000"
     env_file:
       - ./pdf_extraction_service/.env
     depends_on:
@@ -38,8 +32,6 @@ services:
       context: .
       dockerfile: ./docling_translation_service/Dockerfile
     container_name: docling_translation_service
-    ports:
-      - "8003:8000"
     env_file:
       - ./docling_translation_service/.env
       
@@ -48,28 +40,26 @@ services:
       context: .
       dockerfile: ./embedder_service/Dockerfile
     container_name: embedder_service
-    ports:
-      - "8005:8000"
     env_file:
       - ./embedder_service/.env
     depends_on:
       - chromadb
 
-  # nginx:
-  #   container_name: nginx
-  #   build: 
-  #     context: .
-  #     dockerfile: ./nginx/Dockerfile
-  #   ports:
-  #     - "8080:8080"
-  #   env_file:
-  #     - ./nginx/.env
-  #   depends_on:
-  #     - pdf_extraction_service
-  #     - pdf_processor_service
-  #     - chat_service
-  #     - docling_translation_service
-  #     - embedder_service
+  nginx:
+    container_name: nginx
+    build: 
+      context: .
+      dockerfile: ./nginx/Dockerfile
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./nginx/.env
+    depends_on:
+      - pdf_extraction_service
+      - pdf_processor_service
+      - chat_service
+      - docling_translation_service
+      - embedder_service
 
   redis:
     container_name: redis
@@ -81,7 +71,7 @@ services:
     container_name: chromadb
     image: chromadb/chroma:1.0.13
     ports:
-      - "5100:8000"
+      - "8000:8000"
     env_file:
       - ./embedder_service/.env
     volumes:
