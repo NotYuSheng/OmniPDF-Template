@@ -19,5 +19,5 @@ class ChatResponse(BaseModel):
     Response model for chat API
     """
     response: str
-    relevant_chunks: List[Dict[str, Any]] = Field(default_factory=dict, description="Additional metadata about the RAG process")
+    relevant_chunks: List[Dict[str, Any]] = Field(default_factory=List, description="Additional metadata about the RAG process")
     metadata: Dict[str, Any]
