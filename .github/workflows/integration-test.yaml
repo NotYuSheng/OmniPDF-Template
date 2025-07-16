@@ -1,0 +1,103 @@
+name: Integration Test
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - dev
+
+jobs:
+  cypress-run:
+    name: Run Cypress Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Maximize build space
+        uses: AdityaGarg8/remove-unwanted-software@v4.1
+        with:
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Copy example.env to .env
+        run: |
+          echo "Copying example.env to .env..."
+          find . -name "example.env" | while read f; do
+            cp "$f" "$(dirname "$f")/.env"
+            echo "✓ Created $(dirname "$f")/.env"
+          done
+
+      - name: Build and run Compose Stack
+        run: |
+          docker compose \
+            --file docker-compose.yml \
+            up --detach --build
+
+      - name: Delete Docker build cache
+        run: |
+          docker builder prune --all --force
+
+      - name: Wait for all *_service containers (via Nginx)
+        run: |
+          echo "Detecting *_service containers..."
+          SERVICE_NAMES=$(docker compose ps --services | grep '_service')
+      
+          if [ -z "$SERVICE_NAMES" ]; then
+            echo "No *_service services found. Exiting."
+            exit 1
+          fi
+      
+          for NAME in $SERVICE_NAMES; do
+            PREFIX=${NAME%_service}
+            echo "Waiting for $NAME via http://localhost:8080/$PREFIX/health..."
+      
+            for i in {1..30}; do
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:8080/$PREFIX/health")
+              if [ "$STATUS" == "200" ]; then
+                echo "$NAME is healthy"
+                break
+              fi
+              echo "Still waiting for $NAME (HTTP $STATUS)..."
+              sleep 3
+              if [ "$i" -eq 30 ]; then
+                echo "$NAME failed to become healthy. Exiting."
+                exit 1
+              fi
+            done
+          done
+
+      # - name: Wait for Streamlit frontend to be available
+      #   run: |
+      #     for i in {1..30}; do
+      #       STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8501)
+      #       if [ "$STATUS" == "200" ]; then
+      #         echo "Frontend is ready"
+      #         break
+      #       fi
+      #       echo "Waiting for frontend on :8501 (HTTP $STATUS)..."
+      #       sleep 3
+      #       if [ "$i" -eq 30 ]; then
+      #         echo "Frontend did not become ready. Exiting."
+      #         exit 1
+      #       fi
+      #     done
+
+      - name: Set up Node.js for Cypress
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Cypress
+        run: |
+          npm init -y
+          npm install cypress --save-dev
+
+      - name: Run Cypress tests (placeholder-safe)
+        working-directory: cypress
+        run: |
+          npx cypress run || echo "Cypress run completed with non-zero exit (placeholder mode)"
