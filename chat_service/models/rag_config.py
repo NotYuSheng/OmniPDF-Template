@@ -17,7 +17,6 @@ class QwenRAGConfig:
         
         # Context management
         self.max_context_length = int(os.getenv("QWEN_MAX_CONTEXT", "4000"))
-        self.chunk_overlap_threshold = 0.8  # Similarity threshold for chunk deduplication
         
         # RAG-specific settings
         self.min_similarity_score = float(os.getenv("QWEN_MIN_SIMILARITY", "0.1"))
