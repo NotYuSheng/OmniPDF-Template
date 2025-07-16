@@ -22,7 +22,7 @@ _OPENAI_MODEL_DEFAULT = "qwen2.5-0.5b-instruct"
 OPENAI_MODEL_NAME = os.getenv("OPENAI_MODEL", _OPENAI_MODEL_DEFAULT)
 
 
-def prepare_retrieval_results(results: Dict[str, Any]) -> List [Dict[str, Any]]:
+def prepare_retrieval_results(results: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Convert ChromaDB results to structured chunks for RAG"""
     chunks = []
     
@@ -91,7 +91,7 @@ async def perform_rag_query(
         
         # Step 3: Optional reranking for better results across multiple documents
         if enable_reranking and len(chunks) > 1:
-            chunks = await rerank_chunks(chunks, query)
+            chunks = await rerank_chunks(chunks)
         
         # Step 4: Optimize chunks for Qwen-2.5
         optimized_chunks, context = qwen_optimizer.optimize_chunks_for_qwen(
@@ -122,7 +122,7 @@ async def perform_rag_query(
         raise HTTPException(status_code=500, detail="RAG query failed")
 
 
-async def rerank_chunks(chunks: List[Dict[str, Any]], query: str) -> List[Dict[str, Any]]:
+async def rerank_chunks(chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Simple reranking based on document diversity and relevance
     """
