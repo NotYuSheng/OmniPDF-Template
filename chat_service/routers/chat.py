@@ -30,10 +30,10 @@ def prepare_retrieval_results(results: Dict[str, Any]) -> List[Dict[str, Any]]:
         return chunks
     
     # Get the first (and typically only) query results
-    documents = results['documents'][0] if results['documents'] else []
-    metadatas = results['metadatas'][0] if results.get('metadatas') else []
-    distances = results['distances'][0] if results.get('distances') else []
-    ids = results['ids'][0] if results.get('ids') else []
+    documents = (results.get('documents') or [[]])[0]
+    metadatas = (results.get('metadatas') or [[]])[0]
+    distances = (results.get('distances') or [[]])[0]
+    ids = (results.get('ids') or [[]])[0]
     
     for i, doc in enumerate(documents):
         chunk = {
