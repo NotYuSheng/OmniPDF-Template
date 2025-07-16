@@ -9,5 +9,5 @@ async def get_chroma_client():
     """
     Initialize and return an AsyncHTTPClient ChromaDB client instance.
     """
-    chroma_client = await chromadb.AsyncHttpClient(host=CHROMADB_HOST, port=CHROMADB_PORT)
+    chroma_client = await chromadb.AsyncHttpClient(host=CHROMADB_HOST, port=int(CHROMADB_PORT))
     return chroma_client
