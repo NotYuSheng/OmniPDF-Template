@@ -143,9 +143,6 @@ async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: Processin
 async def pdf_embedder_service(request: DataRequest):
     "Chunk up and embed data from PDF document into ChromaDB"
 
-    
-    
-    
     try:
         # Extracted data has to be chunked up first before being embedded and stored into ChromaDB
         chunk_data = await data_chunking(request)
@@ -182,9 +179,6 @@ async def verify_document_embedding(doc_id: str, collection_name: str):
     """Verify if a document's data chunks have been successfully embedded into ChromaDB"""
     try:
         chroma_client = await get_chroma_client()
-        
-        if chroma_client is None:
-            raise HTTPException(status_code=500, detail="ChromaDB client not initialized")
         
         collection = await chroma_client.get_collection(collection_name)
         
