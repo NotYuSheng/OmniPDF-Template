@@ -59,7 +59,7 @@ async def perform_rag_query(
     top_k: int = 5,
     query_type: str = "general",
     enable_reranking: bool = True
-) -> tuple[str, List[Dict[str, Any]]]:
+) -> tuple[str, List[Dict[str, Any]], str]:
     """
     Perform complete RAG query: retrieve relevant chunks and generate response
     """
