@@ -230,7 +230,7 @@ async def handle_chat(
     
     # Prepare metadata for response
     metadata = {
-        "query_type": chat_request.query_type or qwen_optimizer.detect_query_type(chat_request.message),
+        "query_type": chat_request.query_type,
         "chunks_used": len(relevant_chunks),
         "documents_searched": len(doc_ids) if doc_ids else 0,
         "document_ids": list(doc_ids) if doc_ids else [],
