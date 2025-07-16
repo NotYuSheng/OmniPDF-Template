@@ -14,6 +14,8 @@ services:
     container_name: chat_service
     env_file:
       - ./chat_service/.env
+    depends_on:
+      - chromadb
 
   pdf_extraction_service:
     build:
@@ -68,9 +70,18 @@ services:
   chromadb:
     container_name: chromadb
     image: chromadb/chroma:1.0.13
-    expose:
-      - "5100"
-
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./embedder_service/.env
+    volumes:
+      - chromadb-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://chromadb:8000/api/v1/heartbeat"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    
   minio:
     image: minio/minio
     container_name: minio
@@ -108,3 +119,5 @@ services:
 
 volumes:
   minio-data:
+  chromadb-data:
+  
