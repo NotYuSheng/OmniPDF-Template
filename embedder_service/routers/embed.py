@@ -11,7 +11,8 @@ from shared_utils.chroma_client import get_chroma_client
 # from langchain.text_splitter import MarkdownTextSplitter
 from langchain_core.documents import Document
 
-router = APIRouter()
+router = APIRouter(prefix="/embed")
+
 logger = logging.getLogger(__name__)
 
 
@@ -136,7 +137,7 @@ async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: Processin
         raise HTTPException(status_code=500, detail="Embedding failed")
 
 
-@router.post("/embed")
+@router.post("/")
 async def pdf_embedder_service(request: DataRequest):
     "Chunk up and embed data from PDF document into ChromaDB"
 
