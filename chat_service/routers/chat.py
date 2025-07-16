@@ -87,7 +87,7 @@ async def perform_rag_query(
         
         if not chunks:
             logger.warning(f"No relevant chunks found for query: {query}")
-            return "I couldn't find any relevant information in the document collection to answer your question.", []
+            return "I couldn't find any relevant information in the document collection to answer your question.", [], ""
         
         # Step 3: Optional reranking for better results across multiple documents
         if enable_reranking and len(chunks) > 1:
