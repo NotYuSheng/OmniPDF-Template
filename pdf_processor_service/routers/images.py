@@ -25,11 +25,6 @@ async def get_pdf_images(
 
     url_list = []
 
-    if not valid_request:
-        raise HTTPException(
-            status_code=403,
-            detail="User not authorized to access this document or invalid document ID",
-        )
     job = load_job(doc_id=doc_id, job_type="extraction")
     if not job:
         presign_url = generate_presigned_url(f"{doc_id}/original.pdf")

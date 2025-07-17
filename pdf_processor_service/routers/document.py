@@ -64,12 +64,6 @@ async def upload_document(
 async def get_document(
     doc_id: str, valid_request: bool = Depends(validate_session_doc_pair)
 ):
-    if not valid_request:
-        raise HTTPException(
-            status_code=403,
-            detail="User not authorized to access this document or invalid document ID",
-        )
-
     key = f"{doc_id}/original.pdf"
 
     # Check if object exists
@@ -92,12 +86,6 @@ async def delete_document(
     valid_request: bool = Depends(validate_session_doc_pair),
     remove_doc=Depends(get_doc_list_remove_function),
 ):
-    if not valid_request:
-        raise HTTPException(
-            status_code=403,
-            detail="User not authorized to access this document or invalid document ID",
-        )
-
     key = f"{doc_id}/original.pdf"
     success = delete_file(key)
     if success:
