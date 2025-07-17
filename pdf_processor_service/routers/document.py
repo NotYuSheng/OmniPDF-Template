@@ -13,6 +13,7 @@ from utils.session import (
     get_doc_list_remove_function,
     validate_session_doc_pair,
 )
+from utils.proxy import get_external_minio_uri
 from models.document import DocumentUploadResponse
 from botocore.exceptions import ClientError
 
@@ -55,6 +56,7 @@ async def upload_document(
         raise HTTPException(status_code=500, detail="Internal server error")
 
     append_doc(doc_id)
+    presigned_url = get_external_minio_uri(presigned_url)
     return DocumentUploadResponse(
         doc_id=doc_id, filename=key, download_url=presigned_url
     )
@@ -64,12 +66,6 @@ async def upload_document(
 async def get_document(
     doc_id: str, valid_request: bool = Depends(validate_session_doc_pair)
 ):
-    if not valid_request:
-        raise HTTPException(
-            status_code=403,
-            detail="User not authorized to access this document or invalid document ID",
-        )
-
     key = f"{doc_id}/original.pdf"
 
     # Check if object exists
@@ -81,6 +77,7 @@ async def get_document(
         raise HTTPException(status_code=500, detail="Failed to check document")
 
     presigned_url = generate_presigned_url(key)
+    presigned_url = get_external_minio_uri(presigned_url)
     return DocumentUploadResponse(
         doc_id=doc_id, filename=key, download_url=presigned_url
     )
@@ -92,12 +89,6 @@ async def delete_document(
     valid_request: bool = Depends(validate_session_doc_pair),
     remove_doc=Depends(get_doc_list_remove_function),
 ):
-    if not valid_request:
-        raise HTTPException(
-            status_code=403,
-            detail="User not authorized to access this document or invalid document ID",
-        )
-
     key = f"{doc_id}/original.pdf"
     success = delete_file(key)
     if success:

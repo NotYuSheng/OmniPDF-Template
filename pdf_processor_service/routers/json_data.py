@@ -17,11 +17,6 @@ async def get_json(doc_id: str,
                   json_name: str,
                   valid_request: bool = Depends(validate_session_doc_pair)
                   ):
-    if not valid_request:
-        raise HTTPException(
-            status_code=403,
-            detail="User not authorized to access this document or invalid document ID",
-        )
 
     key = f"{doc_id}/{json_name}.json"
 
