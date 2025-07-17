@@ -4,7 +4,11 @@ from os import getenv
 from models.images import ImageResponse, ImageData
 from fastapi import APIRouter, Depends, HTTPException
 from shared_utils.s3_utils import generate_presigned_url, s3_client, S3_BUCKET, load_job
+from utils.asynchttp import proxy_post
 from utils.session import validate_session_doc_pair
+from utils.proxy import get_external_minio_uri
+
+from urllib.parse import urlencode
 
 router = APIRouter(prefix="/images", tags=["images"])
 logger = logging.getLogger(__name__)
@@ -28,10 +32,9 @@ async def get_pdf_images(
         )
     job = load_job(doc_id=doc_id, job_type="extraction")
     if not job:
-        raise HTTPException(
-            status_code=404, 
-            detail="Document ID not found"
-        )
+        presign_url = generate_presigned_url(f"{doc_id}/original.pdf")
+        param = {"doc_id": doc_id, "download_url": presign_url}
+        return await proxy_post(f"{IMAGE_PROCESSOR_URL}?{urlencode(param)}", body=None)
     
     if job.get("status") == "processing":
         raise HTTPException(
@@ -46,6 +49,6 @@ async def get_pdf_images(
     
     for key in keys:
         url = generate_presigned_url(key)
-        url_list.append(ImageData(image_key=key, url=url))
+        url_list.append(ImageData(image_key=key, url=get_external_minio_uri(url)))
 
     return ImageResponse(doc_id=doc_id, filename=f"{doc_id}.pdf", images=url_list)

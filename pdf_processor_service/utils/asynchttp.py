@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Response
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -35,4 +35,4 @@ async def proxy_post(url: str, body: dict):
         except Exception as e:
             logger.error(f"Unexpected error in HTTP request {url}: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Internal server error") from e
-        return req
+        return Response(content=req.content, headers=req.headers, status_code=req.status_code)
