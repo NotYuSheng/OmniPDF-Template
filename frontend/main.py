@@ -13,7 +13,7 @@ import time
 import os
 
 # local imports
-from utils import is_pdf, display_backend_status
+from components.process_pdf import is_pdf, display_backend_status
 
 # Page configuration
 st.set_page_config(
@@ -25,8 +25,6 @@ st.set_page_config(
 
 # Backend
 BACKEND_URL = os.getenv("BACKEND_URL", "http://omnipdf-backend:8003")
-# QOL configs
-sidebar = ""
 
 def process_pdf(uploaded_file):
     """
