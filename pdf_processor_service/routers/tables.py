@@ -39,8 +39,8 @@ async def get_pdf_tables(
             detail="The document is still being processed. Please try again later."
         )
 
-    try:
-        return JSONResponse(content=job.get("data").get("result").get("tables"))
-    except AttributeError as e:
-        logger.error(e)
-        raise HTTPException(status_code=500, detail="A Server Error has occured")
+    tables = job.get("data", {}).get("result", {}).get("tables")
+    if tables is None:
+        logger.error(f"Could not find 'tables' in job result for doc_id: {doc_id}")
+        raise HTTPException(status_code=500, detail="A server error has occurred.")
+    return JSONResponse(content=tables)

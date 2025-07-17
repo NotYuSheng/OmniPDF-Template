@@ -39,8 +39,8 @@ async def get_pdf_text_chunks(
             detail="The document is still being processed. Please try again later."
         )
 
-    try:
-        return JSONResponse(content=job.get("data").get("result").get("texts"))
-    except AttributeError as e:
-        logger.error(e)
-        raise HTTPException(status_code=500, detail="A Server Error has occured")
+    texts = job.get("data", {}).get("result", {}).get("texts")
+    if texts is None:
+        logger.error(f"Could not find 'texts' in job result for doc_id: {doc_id}")
+        raise HTTPException(status_code=500, detail="A server error has occurred.")
+    return JSONResponse(content=texts)
