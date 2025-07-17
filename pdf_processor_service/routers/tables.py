@@ -5,7 +5,6 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
-from models.tables import TablesResponse
 from utils.asynchttp import proxy_post
 from shared_utils.s3_utils import generate_presigned_url
 from utils.session import validate_session_doc_pair
