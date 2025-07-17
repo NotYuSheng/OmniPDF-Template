@@ -1,41 +1,27 @@
 import logging
-from os import getenv
 
-from models.images import ImageResponse, ImageData
-from fastapi import APIRouter, Depends, HTTPException
-from shared_utils.s3_utils import generate_presigned_url, s3_client, S3_BUCKET, load_job
-from utils.asynchttp import proxy_post
+from fastapi import APIRouter, Depends, Response
+
+from models.images import ImageData, ImageResponse
 from utils.session import validate_session_doc_pair
-from utils.proxy import get_external_minio_uri
+from utils.proxy import load_or_create_job, get_external_minio_uri
+from shared_utils.s3_utils import s3_client, S3_BUCKET, generate_presigned_url
 
-from urllib.parse import urlencode
-
-router = APIRouter(prefix="/images", tags=["images"])
+router = APIRouter(prefix="/tables", tags=["tables"])
 logger = logging.getLogger(__name__)
-EXTRACTION_URL = getenv("EXTRACTION_URL")
-if not EXTRACTION_URL:
-    raise ValueError("EXTRACTION_URL is not set")
+
 
 
 @router.get("/{doc_id}")
 async def get_pdf_images(
         doc_id: str,    
         valid_request: bool = Depends(validate_session_doc_pair),
-    ):
-
-    url_list = []
-
-    job = load_job(doc_id=doc_id, job_type="extraction")
-    if not job:
-        presign_url = generate_presigned_url(f"{doc_id}/original.pdf")
-        param = {"doc_id": doc_id, "download_url": presign_url}
-        return await proxy_post(f"{EXTRACTION_URL}?{urlencode(param)}", body=None)
+    job_or_reposnse = Depends(load_or_create_job)
+):
+    if isinstance(job_or_reposnse, Response):
+        return job_or_reposnse
     
-    if job.get("status") == "processing":
-        raise HTTPException(
-            status_code=202,
-            detail="The document is still being processed. Please try again later."
-        )
+    url_list = []
 
     prefix = f"{doc_id}/images/"
     paginator = s3_client.get_paginator('list_objects_v2')
