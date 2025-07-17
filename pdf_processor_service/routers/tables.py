@@ -13,9 +13,9 @@ from shared_utils.s3_utils import load_job
 
 router = APIRouter(prefix="/tables", tags=["tables"])
 logger = logging.getLogger(__name__)
-TABLE_PROCESSOR_URL = getenv("TABLE_PROCESSOR_URL")
-if not TABLE_PROCESSOR_URL:
-    raise ValueError("TABLE_PROCESSOR_URL is not set")
+EXTRACTION_URL = getenv("EXTRACTION_URL")
+if not EXTRACTION_URL:
+    raise ValueError("EXTRACTION_URL is not set")
 
 
 @router.get("/{doc_id}")
@@ -32,7 +32,7 @@ async def get_pdf_tables(
     if not job:
         presign_url = generate_presigned_url(f"{doc_id}/original.pdf")
         param = {"doc_id": doc_id, "download_url": presign_url}
-        return await proxy_post(f"{TABLE_PROCESSOR_URL}?{urlencode(param)}", body=None)
+        return await proxy_post(f"{EXTRACTION_URL}?{urlencode(param)}", body=None)
     
     if job.get("status") == "processing":
         raise HTTPException(

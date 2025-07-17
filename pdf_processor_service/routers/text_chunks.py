@@ -12,9 +12,9 @@ from shared_utils.s3_utils import load_job
 
 router = APIRouter(prefix="/text-chunks", tags=["text-chunks"])
 logger = logging.getLogger(__name__)
-TEXT_CHUNK_PROCESSOR_URL = getenv("TEXT_CHUNK_PROCESSOR_URL")
-if not TEXT_CHUNK_PROCESSOR_URL:
-    raise ValueError("TEXT_CHUNK_PROCESSOR_URL is not set")
+EXTRACTION_URL = getenv("EXTRACTION_URL")
+if not EXTRACTION_URL:
+    raise ValueError("EXTRACTION_URL is not set")
 
 
 @router.get("/{doc_id}")
@@ -31,7 +31,7 @@ async def get_pdf_text_chunks(
     if not job:
         presign_url = generate_presigned_url(f"{doc_id}/original.pdf")
         param = {"doc_id": doc_id, "download_url": presign_url}
-        return await proxy_post(f"{TEXT_CHUNK_PROCESSOR_URL}?{urlencode(param)}", body=None)
+        return await proxy_post(f"{EXTRACTION_URL}?{urlencode(param)}", body=None)
     
     if job.get("status") == "processing":
         raise HTTPException(
