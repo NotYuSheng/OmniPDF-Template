@@ -3,6 +3,9 @@ import matplotlib as plt
 import os
 import requests
 import streamlit as st
+import httpx
+import asyncio
+import base64
 
 # Check if the uploaded file is a valid PDF by checking the magic number
 def is_pdf(file_obj):
@@ -39,42 +42,42 @@ def display_pdf(file):
     return pdf_display
 
 
-def check_backend():
+async def check_backend():
     """
-    Check the health of specific backend services.
-    Returns a dictionary with service names and their health status.
+    Check the health of specific backend services asynchronously.
+    Returns a dictionary with service names and their health status.m
     """
-    try:
-        # Define the services to check
-        services = {
-            "PDF Processor": os.getenv("PDF_PROCESSOR_URL", "http://localhost:8080/pdf_processor"),
-            "PDF Extractor": os.getenv("PDF_EXTRACTOR_URL", "http://localhost:8080/pdf_extraction"),
-            "Chat Service": os.getenv("CHAT_URL", "http://localhost:8080/chat"),
-            "Translation Service": os.getenv("DOCLING_TRANSLATION_URL", "http://localhost:8080/docling_translation"),
-            "Embedder Service": os.getenv("EMBEDDER_URL", "http://localhost:8080/embedder")
-        }
-        
-        backend_check_results = {}
-        
-        for service_name, url in services.items():
-            try:
-                response = requests.get(f"{url}/health", timeout=5)
+    services = {
+        "PDF Processor": os.getenv("PDF_PROCESSOR_URL", "http://localhost:8080/pdf_processor"),
+        "PDF Extractor": os.getenv("PDF_EXTRACTOR_URL", "http://localhost:8080/pdf_extraction"),
+        "Chat Service": os.getenv("CHAT_URL", "http://localhost:8080/chat"),
+        "Translation Service": os.getenv("DOCLING_TRANSLATION_URL", "http://localhost:8080/docling_translation"),
+        "Embedder Service": os.getenv("EMBEDDER_URL", "http://localhost:8080/embedder")
+    }
+
+    async def check_service(service_name, url):
+        health_url = f"{url}/health"
+        try:
+            async with httpx.AsyncClient(timeout=1) as client:
+                response = await client.get(health_url)
                 if response.status_code == 200:
-                    backend_check_results[service_name] = {"status": "Healthy", "url": url}
+                    return service_name, {"status": "Healthy", "url": url}
                 else:
-                    backend_check_results[service_name] = {"status": f"HTTP {response.status_code}", "url": url}
-            except requests.exceptions.ConnectionError:
-                backend_check_results[service_name] = {"status": "Connection Error", "url": url}
-            except requests.exceptions.Timeout:
-                backend_check_results[service_name] = {"status": "Timeout", "url": url}
-            except Exception as e:
-                backend_check_results[service_name] = {"status": f"Error: {str(e)}", "url": url}
-        
-        return backend_check_results
-        
+                    return service_name, {"status": f"HTTP {response.status_code}", "url": url}
+        except httpx.ConnectError:
+            return service_name, {"status": "Connection Error", "url": url}
+        except httpx.TimeoutException:
+            return service_name, {"status": "Timeout", "url": url}
+        except Exception as e:
+            return service_name, {"status": f"Error: {str(e)}", "url": url}
+
+    try:
+        results = await asyncio.gather(*(check_service(name, url) for name, url in services.items()))
+        return {name: status for name, status in results}
     except Exception as e:
-        st.error(f"Error checking backend services: {e}")
+        print(f"Error checking backend services: {e}")
         return {}
+
 
 
 def display_backend_status():
@@ -83,7 +86,7 @@ def display_backend_status():
     """
     st.subheader("🔧 Backend Services Status")
     
-    backend_status = check_backend()
+    backend_status = asyncio.run(check_backend())
     
     if not backend_status:
         st.error("Unable to check backend services")
