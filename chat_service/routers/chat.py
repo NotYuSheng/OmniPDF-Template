@@ -30,10 +30,10 @@ def prepare_retrieval_results(results: Dict[str, Any]) -> List[Dict[str, Any]]:
         return chunks
     
     # Get the first (and typically only) query results
-    documents = (results.get('documents') or [[]])[0]
-    metadatas = (results.get('metadatas') or [[]])[0]
-    distances = (results.get('distances') or [[]])[0]
-    ids = (results.get('ids') or [[]])[0]
+    documents = results.get('documents', [[]])[0]
+    metadatas = results.get('metadatas', [[]])[0]
+    distances = results.get('distances', [[]])[0]
+    ids = results.get('ids', [[]])[0]
     
     for i, doc in enumerate(documents):
         chunk = {
@@ -139,14 +139,25 @@ async def rerank_chunks(chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         for doc_id in doc_chunks:
             doc_chunks[doc_id].sort(key=lambda x: x['similarity_score'], reverse=True)
         
-        # Interleave chunks from different documents to ensure diversity
-        reranked_chunks = []
-        max_chunks_per_doc = max(1, len(chunks) // max(1, len(doc_chunks)))
+        # # Interleave chunks from different documents to ensure diversity
+        # reranked_chunks = []
+        # max_chunks_per_doc = max(1, len(chunks) // max(1, len(doc_chunks)))
         
-        # Take top chunks from each document
-        for doc_id, doc_chunk_list in doc_chunks.items():
-            selected_chunks = doc_chunk_list[:max_chunks_per_doc]
-            reranked_chunks.extend(selected_chunks)
+        # # Take top chunks from each document
+        # for doc_id, doc_chunk_list in doc_chunks.items():
+        #     selected_chunks = doc_chunk_list[:max_chunks_per_doc]
+        #     reranked_chunks.extend(selected_chunks)
+
+        reranked_chunks = []
+        
+        # Determine the number of rounds based on the document with the most chunks
+        max_depth = max(len(chunks) for chunks in doc_chunks.values()) if doc_chunks else 0
+
+        # Interleave by taking one chunk from each document per round
+        for i in range(max_depth):
+            for doc_id in doc_chunks:
+                if i < len(doc_chunks[doc_id]):
+                    reranked_chunks.append(doc_chunks[doc_id][i])
         
         # Sort final list by similarity score
         reranked_chunks.sort(key=lambda x: x['similarity_score'], reverse=True)
