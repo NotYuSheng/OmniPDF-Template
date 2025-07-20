@@ -9,6 +9,12 @@ from collections import defaultdict
 from fastapi import APIRouter, HTTPException
 from models.render import DocumentRendererResponse
 
+import tempfile
+
+from spire.pdf.common import *
+from spire.pdf import *
+
+
 from shared_utils.s3_utils import (
     upload_fileobj,
     generate_presigned_url,
@@ -105,18 +111,39 @@ async def pdf_render(doc_url: str,
     doc.save(original_buffer, garbage=4, deflate=True, clean=True)
     original_buffer.seek(0)  # Reset buffer position
 
-    reader = PdfReader(original_buffer)
-    writer = PdfWriter()
-
-    for page in reader.pages:
-        writer.add_page(page)
-
-    # Write to a new BytesIO buffer
     compressed_buffer = io.BytesIO()
-    writer.write(compressed_buffer)
-    compressed_buffer.seek(0)
 
-    file_size = len(compressed_buffer.getvalue())
+
+
+    # reader = PdfReader(original_buffer)
+    # writer = PdfWriter()
+
+    # for page in reader.pages:
+    #     writer.add_page(page)
+
+    # # Write to a new BytesIO buffer
+    # compressed_buffer = io.BytesIO()
+    # writer.write(compressed_buffer)
+    # compressed_buffer.seek(0)
+
+
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        tmp.write(original_buffer.getvalue())
+        tmp.flush()
+
+    compressor = PdfCompressor(tmp.name)
+
+    # Configure the compression options to optimize fonts in the PDF
+    compression_options = compressor.OptimizationOptions
+    # Enable font compression
+    compression_options.SetIsCompressFonts(True)
+
+
+
+    compressor.CompressToFile(tmp.name)
+
+    file_size = len(tmp.getvalue())
 
     logger.info(f"Time to render document: {time.time() - start_time}")
     logger.info(f"File size: {file_size / 1024:.2f} KB")
