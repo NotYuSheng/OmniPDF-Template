@@ -208,4 +208,20 @@ async def verify_document_embedding(doc_id: str, collection_name: str):
     except Exception as e:
         logger.error(f"Document verification failed: {e}")
         raise HTTPException(status_code=500, detail="Document verification failed")
+
+
+# For local deployment and testing purposes only
+@router.get("/delete")
+async def delete_collection(collection_name: str):
+    """Delete a pre-existing database collection in ChromaDB, for local deployment and testing purposes only"""
+    try:
+        chroma_client = await get_chroma_client()
+        
+        await chroma_client.delete_collection(collection_name)
+
+        return {"status": f"successfully deleted {collection_name}"}
+    
+    except Exception as e:
+        logger.error(f"Failed to delete {collection_name} collection: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete {collection_name} collection")
     
