@@ -70,8 +70,6 @@ services:
   chromadb:
     container_name: chromadb
     image: chromadb/chroma:1.0.13
-    ports:
-      - "8000:8000"
     env_file:
       - ./embedder_service/.env
     volumes:
@@ -81,6 +79,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    expose:
+      - "8000"
     
   minio:
     image: minio/minio
