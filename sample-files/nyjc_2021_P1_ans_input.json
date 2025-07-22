@@ -1,7 +1,8 @@
 {
     "doc_id": "8124a9e0-ebc0-41eb-83c8-bbb4512fe3c8",
-    "status": "completed",
-    "result": {
+    "source_lang": "en",
+    "target_lang": "malay",
+    "docling": {
       "schema_name": "DoclingDocument",
       "version": "1.5.0",
       "name": "original",
