@@ -8,7 +8,7 @@ from PyPDF2 import PdfReader, PdfWriter
 from collections import defaultdict
 from fastapi import APIRouter, HTTPException
 from models.render import DocumentRendererResponse
-import ghostscript
+from spire.pdf import PdfCompressor
 
 import tempfile
 import os
@@ -22,6 +22,51 @@ from shared_utils.s3_utils import (
 
 router = APIRouter(prefix="/render", tags=["render"])
 logger = logging.getLogger(__name__)
+
+def compress_in_chunks_spire(input_bytes: bytes, chunk_size: int = 10) -> bytes:
+    # 1) Load pages via PyPDF2
+    reader = PdfReader(BytesIO(input_bytes))
+    total_pages = len(reader.pages)
+    compressed_segments = []
+
+    # 2) Process each 10-page slice
+    for start in range(0, total_pages, chunk_size):
+        # build a slice
+        writer = PdfWriter()
+        for page in reader.pages[start : start + chunk_size]:
+            writer.add_page(page)
+        slice_buf = BytesIO()
+        writer.write(slice_buf)
+        slice_buf.seek(0)
+
+        # write slice to disk for Spire.PDF compressor
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            tmp.write(slice_buf.getvalue())
+            tmp.flush()
+            tmp_path = tmp.name
+
+        # compress with Spire.PDF
+        compressor = PdfCompressor(tmp_path)
+        opts = compressor.OptimizationOptions
+        opts.SetIsCompressFonts(True)
+        compressor.CompressToFile(tmp_path)
+
+        # read back compressed bytes
+        with open(tmp_path, "rb") as f:
+            compressed_segments.append(f.read())
+
+        os.remove(tmp_path)
+
+    # 3) Merge all compressed slices
+    final_writer = PdfWriter()
+    for segment in compressed_segments:
+        seg_reader = PdfReader(BytesIO(segment))
+        for p in seg_reader.pages:
+            final_writer.add_page(p)
+
+    out_buf = BytesIO()
+    final_writer.write(out_buf)
+    return out_buf.getvalue()
 
 @router.post("/{doc_id}")
 async def pdf_render(doc_url: str,
@@ -124,6 +169,14 @@ async def pdf_render(doc_url: str,
     writer.write(compressed_buffer)
     compressed_buffer.seek(0)
 
+
+
+    compressed_buffer = compressed_buffer.getvalue()
+    compressed_bytes = compress_in_chunks_spire(compressed_buffer, chunk_size=10)
+    compressed_buffer = io.BytesIO(compressed_bytes)
+
+
+
     file_size = len(compressed_buffer.getvalue())
 
     logger.info(f"Time to render document: {time.time() - start_time}")
@@ -151,13 +204,3 @@ async def pdf_render(doc_url: str,
                                     download_url=presigned_url,
                                     )
                                 )
-
-
-
-
-
-
-
-
-
-
