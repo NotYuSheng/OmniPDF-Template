@@ -99,7 +99,8 @@ async def perform_rag_query(
             max_context_length=qwen_config.max_context_length
         )
 
-        logger.info(f"Relevant chunks from {len(set(chunk.get('doc_id') for chunk in optimized_chunks if chunk.get('doc_id')))} documents")
+        number_of_docs = len(set(chunk.get('doc_id') for chunk in optimized_chunks if chunk.get('doc_id')))
+        logger.info(f"Relevant chunks from {number_of_docs} documents")
         logger.info(f"Using {len(optimized_chunks)} chunks for context (total length: {len(context)} chars)")
         
         logger.info(f"Query type: {query_type}")
