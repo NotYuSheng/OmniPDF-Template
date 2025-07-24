@@ -99,7 +99,12 @@ async def perform_rag_query(
             max_context_length=qwen_config.max_context_length
         )
 
+<<<<<<< Updated upstream
         logger.info(f"Relevant chunks from {len(set(chunk.get('doc_id') for chunk in optimized_chunks if chunk.get('doc_id')))} documents")
+=======
+        number_of_docs = len(set(chunk.get('doc_id') for chunk in optimized_chunks if chunk.get('doc_id')))
+        logger.info(f"Relevant chunks from {number_of_docs} documents")
+>>>>>>> Stashed changes
         logger.info(f"Using {len(optimized_chunks)} chunks for context (total length: {len(context)} chars)")
         
         logger.info(f"Query type: {query_type}")
@@ -186,7 +191,11 @@ async def handle_chat(
         user_prompt, relevant_chunks, system_prompt = await perform_rag_query(
             query=chat_request.message,
             collection_name=chat_request.collection_name,
+<<<<<<< Updated upstream
             doc_id=chat_request.id,
+=======
+            doc_id=chat_request.doc_id,
+>>>>>>> Stashed changes
             top_k=chat_request.top_k,
             query_type=chat_request.query_type or "general",
             enable_reranking=qwen_config.enable_reranking
