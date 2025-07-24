@@ -80,20 +80,18 @@ services:
   chromadb:
     container_name: chromadb
     image: chromadb/chroma:1.0.13
-<<<<<<< Updated upstream
-    ports:
-      - "5100:8000"
-    env_file:
-      - ./embedder_service/.env
-=======
->>>>>>> Stashed changes
     volumes:
       - chromadb-data:/data
+    environment:
+      IS_PERSISTENT: "true"
+      ANONYMIZED_TELEMETRY: "false"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://chromadb:8000/api/v1/heartbeat"]
       interval: 10s
       timeout: 5s
       retries: 10
+    expose:
+      - "8000"
     
   minio:
     image: minio/minio
