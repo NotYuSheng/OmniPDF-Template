@@ -8,11 +8,7 @@ class ChatRequest(BaseModel):
     """
 
     message: str
-<<<<<<< Updated upstream
-    id: Optional[str] = None
-=======
     doc_id: Optional[str] = None
->>>>>>> Stashed changes
     top_k: int = Field(default=5, ge=1, le=20, description="Number of relevant chunks to retrieve")
     collection_name: str = Field(default="default_collection", description="ChromaDB collection name")
     query_type: Optional[str] = Field(default="general", description="Query type: general, factual, analytical, summarization (auto-detected if not provided)")
