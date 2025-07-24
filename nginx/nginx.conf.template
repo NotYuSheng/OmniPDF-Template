@@ -33,4 +33,8 @@ server {
     location /embedder/ {
         proxy_pass ${EMBEDDER_URL}/;
     }
+
+    location /image_captioner/ {
+        proxy_pass ${IMAGE_CAPTIONER_URL}/;
+    }
 }
