@@ -8,7 +8,6 @@ from PyPDF2 import PdfReader, PdfWriter
 from collections import defaultdict
 from fastapi import APIRouter, HTTPException
 from models.render import DocumentRendererResponse
-import ghostscript
 
 import tempfile
 import os
@@ -43,7 +42,6 @@ async def pdf_render(doc_url: str,
 
     for text_item in texts:
         translated = text_item.get("translated_text", "")
-
         for prov in text_item.get("prov", []):
             page_no = prov.get("page_no")
             bbox = prov.get("bbox")
@@ -95,16 +93,20 @@ async def pdf_render(doc_url: str,
 
             logger.info(f"Text: {trans_text}")
             logger.info(f"Bbox: {coords}")
-            try:
-                page.insert_htmlbox(coords, trans_text)
-            except Exception as e:
-                logger.error("Error inserting HTML box:")
-                logger.error(f"Text: {trans_text}")
-                logger.error(f"Original BBox: {bbox}")
-                logger.error(f"Converted Coords: {coords}")
-                logger.error(f"Page size: {page.rect}")
-                logger.exception(e)  # full traceback
-                raise e  # optionally re-raise for FastAPI to return 500
+
+            if type(trans_text) is str:
+                try:
+                    page.insert_htmlbox(coords, trans_text)
+                except Exception as e:
+                    logger.error("Error inserting HTML box:")
+                    logger.error(f"Text: {trans_text}")
+                    logger.error(f"Original BBox: {bbox}")
+                    logger.error(f"Converted Coords: {coords}")
+                    logger.error(f"Page size: {page.rect}")
+                    logger.exception(e)  # full traceback
+                    raise e  # optionally re-raise for FastAPI to return 500
+            else:
+                page.insert_htmlbox(coords, "Error")
 
     original_buffer = io.BytesIO()
     doc.subset_fonts()
