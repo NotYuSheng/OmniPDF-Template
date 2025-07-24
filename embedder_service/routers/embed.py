@@ -6,32 +6,22 @@ import logging
 import uuid
 from models.embed import ProcessingConfig, DataRequest
 from models.helper import get_chunking_model, get_embedding_model
-# from unstructured.partition.pdf import partition_pdf
-# from unstructured.staging.base import elements_to_json
-# import numpy as np
+from shared_utils.chroma_client import get_chroma_client
 
 # from langchain.text_splitter import MarkdownTextSplitter
 from langchain_core.documents import Document
 
-# ChromaDB
-import chromadb
-# from chromadb.utils import embedding_functions
+router = APIRouter(prefix="/embed")
 
-router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-# In-memory ChromaDB instance (data stored in memory)
-chroma_client = chromadb.EphemeralClient()
-# Persistent ChromaDB instance (data stored on disk)
-# chroma_client = chromadb.HttpClient(host="localhost", port=5100)
-
-
-async def data_chunking(request:DataRequest, chunker) -> List[Dict[str, Any]]:
+async def data_chunking(request:DataRequest) -> List[Dict[str, Any]]:
     """Perform chunking / splitting of data via Semantic Chunking using LangChain's SemanticChunker,
     and reject by returning empty list if PDF document has no content"""
 
     logger.info("Starting chunking process...")
+    chunker = get_chunking_model(request.config)
 
     try:
 
@@ -108,15 +98,17 @@ async def data_chunking(request:DataRequest, chunker) -> List[Dict[str, Any]]:
         raise HTTPException(status_code=500, detail="Data chunking failed.")
 
 
-async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: ProcessingConfig, emb_model):
+async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: ProcessingConfig):
     """Embed data chunks of PDF document into ChromaDB"""
 
     logger.info("Starting embedding process...")
+    embedding_model = get_embedding_model(config.embedding_model)
 
     try:
         try:
             logger.info("Getting collection...")
-            collection = chroma_client.get_or_create_collection(name=config.collection_name, embedding_function=emb_model)
+            chroma_client = await get_chroma_client()
+            collection = await chroma_client.get_or_create_collection(name=config.collection_name, embedding_function=embedding_model)
             logger.info(f"Using existing collection: {config.collection_name}")
         except Exception as e:
             logger.error(f"Collection retrieval failed: {e}")
@@ -130,7 +122,7 @@ async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: Processin
             logger.warning("No chunks to add to the collection.")
             return
         
-        collection.add(
+        await collection.add(
             ids=ids,
             documents=documents,
             metadatas=metadatas
@@ -142,75 +134,23 @@ async def vectorize_chromadb(chunk_data: List[Dict[str, Any]], config: Processin
             "total_chunks_added": len(chunk_data)
         }
 
-        # Part of the Chat Service
-        # results = collection.query(
-        #     query_texts=["They keep moving."],
-        #     n_results=min(2, len(chunk_data)),
-        #     include=["distances", "documents",  "metadatas", "embeddings"]
-        # )
-
-        # serialized_results = serialize_chroma_results(results)
-
-        # return {
-        #     "collection_name": config.collection_name,
-        #     "total_chunks_added": len(chunk_data),
-        #     "sample_query_results": serialized_results
-        # }
-
     except Exception as e:
         logger.error(f"Embedding process failed: {e}")
         raise HTTPException(status_code=500, detail="Embedding failed")
 
 
-# def serialize_chroma_results(results: Dict[str, Any]) -> Dict[str, Any]:
-#     """Convert ChromaDB query results to JSON-serializable format"""
-
-#     serialized = {}
-    
-#     for key, value in results.items():
-#         if key == 'embeddings' and value is not None:
-#             # Convert numpy arrays to lists for embeddings
-#             if isinstance(value, list) and len(value) > 0:
-#                 if isinstance(value[0], np.ndarray):
-#                     serialized[key] = [emb.tolist() for emb in value]
-#                 elif isinstance(value[0], list):
-#                     # Already in list format
-#                     serialized[key] = value
-#                 else:
-#                     serialized[key] = value
-#             else:
-#                 serialized[key] = value
-#         elif key == 'distances' and value is not None:
-#             # Handle distances (might be numpy arrays)
-#             if isinstance(value, list) and len(value) > 0:
-#                 if isinstance(value[0], np.ndarray):
-#                     serialized[key] = [dist.tolist() for dist in value]
-#                 else:
-#                     serialized[key] = value
-#             else:
-#                 serialized[key] = value
-#         else:
-#             # Handle other fields normally
-#             serialized[key] = value
-    
-#     return serialized
-
-
-@router.post("/embed")
+@router.post("/")
 async def pdf_embedder_service(request: DataRequest):
     "Chunk up and embed data from PDF document into ChromaDB"
 
-    semantic_chunker = get_chunking_model(request.config)
-    embedding_model = get_embedding_model(request.config.embedding_model)
-    
     try:
         # Extracted data has to be chunked up first before being embedded and stored into ChromaDB
-        chunk_data = await data_chunking(request, semantic_chunker)
+        chunk_data = await data_chunking(request)
 
         if not chunk_data:
             raise HTTPException(status_code=400, detail="No chunks were created from the input text") 
         
-        embed_results = await vectorize_chromadb(chunk_data, request.config, embedding_model)
+        embed_results = await vectorize_chromadb(chunk_data, request.config)
         
         return {
                 "status": "success",
@@ -235,17 +175,15 @@ async def pdf_embedder_service(request: DataRequest):
     
 
 @router.get("/status/{doc_id}")
-async def verify_document_embedding(doc_id: str, collection_name: str = "my_documents"):
+async def verify_document_embedding(doc_id: str, collection_name: str):
     """Verify if a document's data chunks have been successfully embedded into ChromaDB"""
-    
     try:
-        if chroma_client is None:
-            raise HTTPException(status_code=500, detail="ChromaDB client not initialized")
+        chroma_client = await get_chroma_client()
         
-        collection = chroma_client.get_or_create_collection(name=collection_name)
+        collection = await chroma_client.get_collection(collection_name)
         
         # Query by doc_id in metadata
-        results = collection.get(
+        results = await collection.get(
             where={"doc_id": doc_id},
             include=["documents", "metadatas", "embeddings"]
         )
@@ -270,3 +208,4 @@ async def verify_document_embedding(doc_id: str, collection_name: str = "my_docu
     except Exception as e:
         logger.error(f"Document verification failed: {e}")
         raise HTTPException(status_code=500, detail="Document verification failed")
+    
