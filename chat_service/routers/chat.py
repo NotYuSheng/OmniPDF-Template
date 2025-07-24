@@ -187,7 +187,7 @@ async def handle_chat(
         user_prompt, relevant_chunks, system_prompt = await perform_rag_query(
             query=chat_request.message,
             collection_name=chat_request.collection_name,
-            doc_id=chat_request.id,
+            doc_id=chat_request.doc_id,
             top_k=chat_request.top_k,
             query_type=chat_request.query_type or "general",
             enable_reranking=qwen_config.enable_reranking
