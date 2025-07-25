@@ -11,8 +11,7 @@ from models.render import DocumentRendererResponse
 
 import tempfile
 import os
-from io import BytesIO
-
+import io
 
 from shared_utils.s3_utils import (
     upload_fileobj,
@@ -34,10 +33,18 @@ async def pdf_render(doc_url: str,
 
     pdf_response = requests.get(doc_url)
     pdf_response.raise_for_status()
+
+    content_length = pdf_response.headers.get("Content-Length")
+    if content_length:
+        size_bytes = int(content_length)
+        original_size = size_bytes / 1024 #in kb
+    else:
+        size_bytes = len(pdf_response.content)
+        original_size = size_bytes / 1024 #in kb
+
+
     doc = pymupdf.open(stream=pdf_response.content, filetype="pdf")
-
     trans_text_data = defaultdict(list)
-
     texts = json_data.get("docling", {}).get("texts", [])
 
     for text_item in texts:
@@ -56,21 +63,22 @@ async def pdf_render(doc_url: str,
                 })
 
     ### This section is supposed to handle table rendering but has been excluded due to autoscaling issues
-    tables = json_data.get("docling", {}).get("tables", [])
+    
+    # tables = json_data.get("docling", {}).get("tables", [])
 
-    for table in tables:
-        table_cells = table.get("data", {}).get("table_cells", [])
-        page_no = table.get("prov", [])[0].get("page_no")
+    # for table in tables:
+    #     table_cells = table.get("data", {}).get("table_cells", [])
+    #     page_no = table.get("prov", [])[0].get("page_no")
 
-        for cell in table_cells:
-            translated = cell.get("translated_text")
-            bbox = cell.get("bbox")
+    #     for cell in table_cells:
+    #         translated = cell.get("translated_text")
+    #         bbox = cell.get("bbox")
 
-            if page_no is not None and bbox:
-                trans_text_data[page_no].append({
-                    "translated_text": translated,
-                    "bbox": bbox
-                })
+    #         if page_no is not None and bbox:
+    #             trans_text_data[page_no].append({
+    #                 "translated_text": translated,
+    #                 "bbox": bbox
+    #             })
 
     data = dict(trans_text_data)
 
@@ -103,15 +111,15 @@ async def pdf_render(doc_url: str,
                     logger.error(f"Original BBox: {bbox}")
                     logger.error(f"Converted Coords: {coords}")
                     logger.error(f"Page size: {page.rect}")
-                    logger.exception(e)  # full traceback
-                    raise e  # optionally re-raise for FastAPI to return 500
+                    logger.exception(e)
+                    raise e
             else:
                 page.insert_htmlbox(coords, "Error")
 
     original_buffer = io.BytesIO()
     doc.subset_fonts()
     doc.save(original_buffer, garbage=4, deflate=True, clean=True)
-    original_buffer.seek(0)  # Reset buffer position
+    original_buffer.seek(0)
 
     compressed_buffer = io.BytesIO()
 
@@ -121,16 +129,20 @@ async def pdf_render(doc_url: str,
     for page in reader.pages:
         writer.add_page(page)
 
-    # Write to a new BytesIO buffer
     compressed_buffer = io.BytesIO()
     writer.write(compressed_buffer)
     compressed_buffer.seek(0)
 
     file_size = len(compressed_buffer.getvalue())
 
+    rendered_size = file_size / 1024
+
+    if original_size * 1.3 < rendered_size:
+        logger.warning(f"File is bloated at {((rendered_size - original_size) / original_size) * 100:.2f}%")
+
     logger.info(f"Time to render document: {time.time() - start_time}")
-    logger.info(f"File size: {file_size / 1024:.2f} KB")
-    logger.info(f"File size: {file_size / (1024 * 1024):.2f} MB")
+    logger.info(f"File size: {original_size:.2f} => {file_size / 1024:.2f} KB")
+    logger.info(f"File size: {original_size / 1024:.2f} => {file_size / (1024 * 1024):.2f} MB")
 
     doc_id = str(uuid.uuid4())
     key = f"{doc_id}/rendered.pdf"
