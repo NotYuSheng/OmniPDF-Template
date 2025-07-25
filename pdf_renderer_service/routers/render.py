@@ -9,10 +9,6 @@ from collections import defaultdict
 from fastapi import APIRouter, HTTPException
 from models.render import DocumentRendererResponse
 
-import tempfile
-import os
-import io
-
 from shared_utils.s3_utils import (
     upload_fileobj,
     generate_presigned_url,
